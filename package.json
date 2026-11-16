@@ -1,0 +1,19 @@
+{
+  "name": "smartboard",
+  "version": "1.0.0",
+  "description": "SmartBoard - real-time collaborative digital whiteboard for teachers and students",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongodb": "^6.22.0",
+    "socket.io": "^4.7.5"
+  },
+  "license": "MIT"
+}
