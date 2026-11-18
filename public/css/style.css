@@ -749,3 +749,13 @@ html, body { overflow-x: hidden; }
 .card .join-row .scan-btn { padding-inline: 14px; }
 .card .join-row .scan-btn span { display: none; }
 @media (min-width: 561px) { .card .join-row .scan-btn span { display: inline; } }
+/* phone landing fix: cards must never be wider than the screen */
+.cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+.card { min-width: 0; }
+.join-row .input { flex: 1 1 0; min-width: 0; width: 0; }
+.field .input, .card .input { max-width: 100%; }
+.tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.acct-bar { max-width: calc(100% - 24px); }
+@media (max-width: 560px) { .acct-bar { top: 16px; left: 12px; right: auto; } .landing-wrap { padding-top: 76px; } }
