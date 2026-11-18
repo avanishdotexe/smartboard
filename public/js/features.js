@@ -450,6 +450,9 @@
     $('#bgBtn').addEventListener('click', () => {
       const box = $('#bgGallery');
       box.textContent = '';
+      const opt = el('label', 'bg-all'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = 'bgAll';
+      opt.append(cb, document.createTextNode(' Apply to all pages (otherwise only page ' + (S.cur + 1) + ')'));
+      box.appendChild(opt);
       SB.BG_LIST.forEach(([cat, items]) => {
         box.appendChild(el('h4', '', cat));
         const grid = el('div', 'bg-grid');
@@ -459,7 +462,7 @@
           const x = c.getContext('2d'); x.scale(0.2, 0.2);
           SB.paintBg(x, id);
           b.append(c, el('span', '', name));
-          b.onclick = () => { SB.applyBg(id); emit('bg:set', id); closeModal('mBg'); };
+          b.onclick = () => { const all = cb.checked; if (all) S.bgs = S.pages.map(() => id); SB.applyBg(id, S.cur); emit('bg:set', { page: S.cur, bg: id, all }); closeModal('mBg'); };
           grid.appendChild(b);
         });
         box.appendChild(grid);

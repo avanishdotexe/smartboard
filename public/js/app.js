@@ -285,6 +285,9 @@
   const FEATURE_EVENTS = ['react', 'poll:state', 'timer:state', 'people', 'hand:raised', 'hand:state', 'picked', 'room:title', 'call:state', 'rtc:joined', 'rtc:left', 'rtc:sig', 'rtc:ctl', 'ov:set', 'ask:state', 'break:state', 'chat:msg', 'chat:on', 'chat:clear', 'confuse:state', 'confuse:mine', 'cheer', 'lb:state'];
 
   const ICONS = {
+    full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.600 13.500 6.800 4M15.400 6.500l-6.800 4"/>',
     logo: '<rect x="3" y="4" width="18" height="13" rx="2.5"/><path d="M8 21h8M12 17v4"/><path d="M7 12l3-3 2.5 2.5L16 8"/>',
     select: '<path d="m5 3 14 8-6 1.5L10 19Z"/><path d="m13 13 5 6"/>',
     lasso: '<path stroke-dasharray="3 2.6" d="M12 3.5c4.7 0 8.5 1.9 8.5 4.4s-3.8 4.4-8.5 4.4-8.5-2-8.5-4.4S7.300 3.500 12 3.500z"/><path d="M8.400 12c-.2 2.200-1.700 3.400-3.300 3.800"/><circle cx="4.400" cy="18.600" r="2"/>',
@@ -306,6 +309,7 @@
     copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
     download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>',
+    more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
     exit: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>',
     chevL: '<path d="m15 18-6-6 6-6"/>',
     chevR: '<path d="m9 18 6-6-6-6"/>',
@@ -432,7 +436,7 @@
   // ---------- state ----------
   const S = {
     socket: null, code: null, role: null, joined: false, name: '',
-    pages: [[]], cur: 0, bg: 'white', studentDraw: false, count: 1, title: '',
+    pages: [[]], bgs: [], cur: 0, bg: 'white', studentDraw: false, count: 1, title: '',
     tool: 'pen', penStyle: 'normal', present: false, noteIdx: 0, color: INK, size: 4, fill: false, dash: false, both: false, snap: false, shapeKind: 'triangle', font: 'sans', smart: false, stamp: '⭐',
     eSize: 12, vz: 1, vx: 0, vy: 0, base: 1, strokeErase: false, curtain: null, erasing: false, scale: 1, drawing: null, tbox: null, laserOn: false, sel: null, grp: null, lasso: null, xf: null,
     imgs: new Map(),
@@ -768,7 +772,7 @@
         break;
       case 'image': {
         const im = getImg(o);
-        if (im.complete && im.naturalWidth) ctx.drawImage(im, o.x, o.y, o.w, o.h);
+        if (im.complete && im.naturalWidth) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, o.x, o.y, o.w, o.h); }
         break;
       }
     }
@@ -928,6 +932,7 @@
     const cnt = $('#selCount'); cnt.classList.remove('hidden'); cnt.textContent = list.length + ' selected';
     $('#selFont').classList.add('hidden'); $('#selFill').classList.add('hidden');
     $('#selColorWrap').classList.toggle('hidden', list.every((o) => o.type === 'image'));
+    $('#selFull').classList.add('hidden');
     const first = list.find((o) => o.type !== 'image');
     if (first) $('#selColor').style.background = /^#[0-9a-f]{6}$/i.test(first.color) ? first.color : '#000000';
     const bw = bar.offsetWidth || 160, sw = stage.clientWidth;
@@ -977,6 +982,7 @@
     $('#selFill').classList.toggle('hidden', !['rect', 'ellipse', 'shape'].includes(o.type));
     $('#selFont').classList.toggle('hidden', o.type !== 'text');
     $('#selColorWrap').classList.toggle('hidden', o.type === 'image');
+    $('#selFull').classList.toggle('hidden', o.type !== 'image');
     if (o.type !== 'image') $('#selColor').style.background = /^#[0-9a-f]{6}$/i.test(o.color) ? o.color : '#000000';
     if (o.type === 'text') $('#selFont').textContent = o.f === 'hand' ? 'Aa·hand' : 'Aa';
   }
@@ -1041,7 +1047,7 @@
     S.socket = s;
 
     s.on('connect', () => {
-      toastDone('net');
+      S.ready = true; fire('server', true); toastDone('net');
       if (S.joined && S.code) {
         s.emit('room:join', { code: S.code, key: keyFor(S.code), name: S.name }, (res) => {
           if (res && res.ok) { S.role = res.role; applyState(res.state); updateUI(); toast('Reconnected ✅'); }
@@ -1049,7 +1055,7 @@
         });
       }
     });
-    s.on('disconnect', () => { if (S.joined) toast('Connection lost, trying to reconnect…', { id: 'net', ms: 0 }); });
+    s.on('disconnect', () => { S.ready = false; if (S.joined) toast('Connection lost, trying to reconnect…', { id: 'net', ms: 0 }); });
 
     s.on('obj:add', ({ page, obj }) => {
       const p = S.pages[page]; if (!p) return;
@@ -1081,21 +1087,22 @@
       if (page === S.cur) render();
     });
     s.on('page:clear', ({ page }) => { S.pages[page] = []; if (page === S.cur) render(); });
-    s.on('page:added', ({ index }) => {
+    s.on('page:added', ({ index, bg }) => {
       while (S.pages.length <= index) S.pages.push([]);
+      S.bgs[index] = bg || S.bg;
       if (!inBrk()) goPage(index, false); else updatePager();
     });
-    s.on('page:duped', ({ index, objects }) => { S.pages.splice(index, 0, objects); goPage(index, false); });
+    s.on('page:duped', ({ index, objects, bg }) => { S.pages.splice(index, 0, objects); S.bgs.splice(index, 0, bg || S.bg); goPage(index, false); });
     s.on('curtain:set', (c) => setCurtain(c, false));
     s.on('pages:grew', ({ count }) => { while (S.pages.length < count) S.pages.push([]); updatePager(); });
     s.on('board:loaded', (st) => { applyState(st); toast('Board loaded ✅'); });
     s.on('page:go', ({ index }) => { if (S.pages[index] && !inBrk()) goPage(index, false); });
     s.on('page:deleted', ({ index, current }) => {
-      S.pages.splice(index, 1);
+      S.pages.splice(index, 1); S.bgs.splice(index, 1);
       if (!S.pages.length) S.pages.push([]);
       goPage(Math.min(current, S.pages.length - 1), false);
     });
-    s.on('bg:set', (bg) => applyBg(bg));
+    s.on('bg:set', (d) => { if (d && typeof d === 'object') { if (d.all) S.bgs = S.pages.map(() => d.bg); applyBg(d.bg, d.page); } else applyBg(d); });
     s.on('perm:set', (on) => {
       S.studentDraw = on; updateUI();
       if (!isTeacher()) toast(on ? '✏️ The teacher allowed you to draw' : '👀 You can only view now');
@@ -1114,7 +1121,8 @@
     S.title = st.title || '';
     $('#countText').textContent = st.count;
     $('#boardTitle').value = S.title;
-    applyBg(st.bg);
+    S.bgs = (st.bgs || []).slice();
+    applyBg(S.bgs[S.cur] || st.bg, S.cur);
     setCurtain(st.curtain || null, false);
     updatePager();
     render();
@@ -1157,10 +1165,23 @@
     fire('leave');
   }
 
+  // Free hosting sleeps when unused. Start waking it (and connect the socket) as soon as the page opens.
+  function warmUp() {
+    const bar = $('#warmBar'); if (!bar) return;
+    if (window.SB_SERVER === undefined && !location.protocol.startsWith('http')) return;
+    const t0 = Date.now(); let slow = setTimeout(() => { bar.textContent = 'Server is waking up. This can take up to a minute the first time…'; bar.classList.remove('hidden'); }, 1800);
+    try { fetch((window.SB_SERVER || '') + '/health', { cache: 'no-store' }).catch(() => {}); } catch (e) { /* ignore */ }
+    const s = connect(); if (!s) { clearTimeout(slow); return; }
+    const ok = () => { clearTimeout(slow); if (!bar.classList.contains('hidden')) { bar.textContent = 'Server is ready ✅'; setTimeout(() => bar.classList.add('hidden'), 1200); } };
+    if (s.connected) ok(); else s.once('connect', ok);
+  }
+
   function createBoard() {
     if (!navigator.onLine || !connect()) return toast('You are offline. Connect to the internet to create a board.');
     const title = $('#titleInput').value.trim();
-    S.socket.timeout(8000).emit('room:create', { title, token: store.get('sb_token', '') || undefined }, (timedOut, res) => {
+    const cb = $('#createBtn'); const ct = cb.textContent; cb.disabled = true; cb.textContent = S.ready ? 'Creating…' : 'Waking server…';
+    S.socket.timeout(S.ready ? 10000 : 70000).emit('room:create', { title, token: store.get('sb_token', '') || undefined }, (timedOut, res) => {
+      cb.disabled = false; cb.textContent = ct;
       if (timedOut || !res || !res.ok) return toast('Could not create the board, please try again.');
       saveKey(res.code, res.key);
       res.fresh = true;
@@ -1175,8 +1196,13 @@
     if (code.length < 4) { err.textContent = 'Enter the full room code.'; return; }
     if (!navigator.onLine || !connect()) { err.textContent = 'You are offline. Connect to the internet to join a board.'; return; }
     S.name = $('#nameInput').value.trim().slice(0, 24);
+    const ni = $('#nameInput'); ni.classList.remove('bad');
+    if (!S.name && !keyFor(code)) { err.textContent = 'Please enter your name first.'; ni.classList.add('bad'); ni.focus(); return; }
     store.set('sb_name', S.name);
-    S.socket.timeout(8000).emit('room:join', { code, key: keyFor(code), name: S.name }, (timedOut, res) => {
+    const jb = $('#joinBtn'); const jt = jb.textContent; jb.disabled = true; jb.textContent = S.ready ? 'Joining…' : 'Waking server…';
+    const done = () => { jb.disabled = false; jb.textContent = jt; };
+    S.socket.timeout(S.ready ? 10000 : 70000).emit('room:join', { code, key: keyFor(code), name: S.name }, (timedOut, res) => {
+      done();
       if (timedOut) { err.textContent = 'Server is not responding. Please try again.'; return; }
       if (!res || !res.ok) { err.textContent = (res && res.error) || 'Could not join.'; return; }
       enterRoom(res);
@@ -1210,13 +1236,18 @@
     closeTextBox(true);
     S.drawing = null; S.xf = null; S.sel = null;
     S.cur = i;
+    if (S.bgs[i] && S.bgs[i] !== S.bg) applyBg(S.bgs[i], i);
     updatePager();
     render();
     if (notify) emit('page:go', { index: i });
   }
 
-  function applyBg(bg) {
+  const bgOf = (i) => (BG[S.bgs[i]] ? S.bgs[i] : (BG[S.defBg] ? S.defBg : 'white'));
+  function applyBg(bg, page) {
     if (!BG[bg]) bg = 'white';
+    if (page === undefined || page === null) page = S.cur;
+    S.bgs[page] = bg; S.defBg = bg;
+    if (page !== S.cur) return;
     S.bg = bg;
     paintBg(bgX, bg);
     $('#bgBtn').title = 'Wallpaper: ' + bg;
@@ -1801,9 +1832,9 @@
           const k = Math.min(1, maxDim / Math.max(im.naturalWidth, im.naturalHeight));
           const c = document.createElement('canvas');
           c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
-          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(im, 0, 0, c.width, c.height);
           const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          resolve({ src: c.toDataURL(type, 0.86), w: c.width, h: c.height });
+          resolve({ src: c.toDataURL(type, 0.93), w: c.width, h: c.height });
         };
         im.src = fr.result;
       };
@@ -1811,13 +1842,36 @@
     });
   }
 
+  // ask how big an uploaded picture / PDF should be placed on the board
+  function askFit(what) {
+    return new Promise((resolve) => {
+      let m = document.getElementById('mFit');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'mFit'; m.className = 'modal hidden';
+        m.innerHTML = '<div class="sheet"><div class="sheet-head"><h3 id="fitTitle">Place on board</h3></div><p class="hint">Full screen covers the whole board edge to edge. Normal keeps it smaller so you can write around it.</p><div class="row end"><button class="btn ghost" data-fit="normal">Normal size</button><button class="btn primary" data-fit="full">Full screen</button></div></div>';
+        document.body.append(m);
+      }
+      $('#fitTitle').textContent = 'Place ' + what + ' on the board';
+      openModal('mFit');
+      const done = (v) => { closeModal('mFit'); m.removeEventListener('click', onc); resolve(v); };
+      const onc = (e) => { const b = e.target.closest('[data-fit]'); if (b) done(b.dataset.fit); else if (e.target === m) done('normal'); };
+      m.addEventListener('click', onc);
+    });
+  }
+  function fillBoard(o) {
+    const k = Math.min(W / o.w, H / o.h);
+    const w = o.w * k, h = o.h * k;
+    o.x = (W - w) / 2; o.y = (H - h) / 2; o.w = w; o.h = h;
+  }
+
   async function insertImage(file) {
     if (!file) return;
     try {
-      const { src, w, h } = await readScaled(file, 1400);
-      const k = Math.min((W * 0.8) / w, (H * 0.8) / h);
+      const mode = await askFit('the image');
+      const { src, w, h } = await readScaled(file, 2600);
+      const k = mode === 'full' ? Math.min(W / w, H / h) : Math.min((W * 0.8) / w, (H * 0.8) / h);
       addObj({ id: uid(), type: 'image', x: (W - w * k) / 2, y: (H - h * k) / 2, w: w * k, h: h * k, src });
-      toast('Image added. Use the Select tool to move or resize it 🖼️');
+      toast(mode === 'full' ? 'Image added full screen 🖼️' : 'Image added. Use the Select tool to move or resize it 🖼️');
     } catch { toast('Could not load the image.'); }
   }
 
@@ -1829,6 +1883,7 @@
   async function importPdf(file) {
     if (!file) return;
     try {
+      const mode = await askFit('the PDF pages');
       toast('Loading PDF…', { id: 'pdf', ms: 0 });
       const V = '3.11.174';
       await loadScript(`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${V}/pdf.min.js`);
@@ -1836,23 +1891,28 @@
       const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
       const n = Math.min(pdf.numPages, 40);
       const useCurrent = S.pages[S.cur].length === 0;
-      let first = null;
+      let first = null, used = 0;
       for (let i = 1; i <= n; i++) {
         toast(`Importing PDF: page ${i} / ${n}`, { id: 'pdf', ms: 0 });
         const page = await pdf.getPage(i);
         const v0 = page.getViewport({ scale: 1 });
         const f = Math.min(W / v0.width, H / v0.height);
-        const vp = page.getViewport({ scale: f * 1.3 });
+        // render at about 2x the board width so text stays sharp, keep the size sensible for many pages
+        const target = used > 9e6 ? 1.4 : 2.0;
+        const vp = page.getViewport({ scale: f * target });
         const c = document.createElement('canvas');
         c.width = Math.round(vp.width); c.height = Math.round(vp.height);
         const cx = c.getContext('2d');
         cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
         await page.render({ canvasContext: cx, viewport: vp }).promise;
-        const src = c.toDataURL('image/jpeg', 0.82);
+        let src = c.toDataURL('image/jpeg', used > 9e6 ? 0.85 : 0.94);
+        if (src.length > 3.2e6) src = c.toDataURL('image/jpeg', 0.86);
+        used += src.length;
         const idx = i === 1 && useCurrent ? S.cur : await addPage();
         if (idx === null) { toast('Page limit reached.'); break; }
         if (first === null) first = idx;
-        const w = v0.width * f, h = v0.height * f;
+        const kk = mode === 'full' ? 1 : 0.85;
+        const w = v0.width * f * kk, h = v0.height * f * kk;
         addObj({ id: uid(), type: 'image', x: (W - w) / 2, y: (H - h) / 2, w, h, src }, idx);
       }
       if (first !== null) goPage(first);
@@ -1877,7 +1937,7 @@
     const out = document.createElement('canvas');
     out.width = W * E; out.height = H * E;
     const ox = out.getContext('2d'); ox.scale(E, E);
-    paintBg(ox, S.bg);
+    paintBg(ox, bgOf(idx));
     ox.setTransform(1, 0, 0, 1, 0, 0);
     ox.drawImage(layer, 0, 0);
     return out;
@@ -2173,6 +2233,7 @@
     };
 
     $('#selDup').onclick = duplicateSel;
+    $('#selFull').onclick = () => { const o = S.sel && findObj(S.sel.page, S.sel.id); if (!o || o.type !== 'image') return; fillBoard(o); emit('obj:replace', { page: S.sel.page, obj: clone(o) }); render(); placeSel(); toast('Image fitted to the full board'); };
     $('#selDel').onclick = deleteSel;
     $('#selFont').onclick = toggleSelFont;
     $('#selFill').onclick = toggleSelFill;
@@ -2234,6 +2295,8 @@
 
     // landing
     $('#nameInput').value = store.get('sb_name', '');
+    $('#nameInput').addEventListener('input', () => { $('#nameInput').classList.remove('bad'); $('#joinErr').textContent = ''; });
+    warmUp();
     $('#createBtn').onclick = createBoard;
     $('#titleInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') createBoard(); });
     $('#joinBtn').onclick = () => joinBoard($('#codeInput').value);
@@ -2281,7 +2344,7 @@
     joinBoard, saveKey, store,
     S, W, H, $, $$, ICONS, THEMES, store, uid, clone, emit, toast, toastDone, hook, fire, paintIcons, svgOf,
     openModal, closeModal, uiConfirm, addObj, addPage, goPage, setTool, setColor, select, isTeacher, canDraw,
-    updateUI, goPage, bboxOf: bbox, inBrk, applyView, zoomAt, resetView, pos, joinBoard, loadScript, SHAPES, pageCanvas, setPresent, BG, BG_LIST, paintBg, applyBg, drawObj, PENS, applyTheme, saveBlob, start: init,
+    updateUI, goPage, bboxOf: bbox, inBrk, applyView, zoomAt, resetView, pos, joinBoard, loadScript, SHAPES, pageCanvas, setPresent, bgOf, BG, BG_LIST, paintBg, applyBg, drawObj, PENS, applyTheme, saveBlob, start: init,
     ink: () => (BG[S.bg].dark ? '#f1f5f9' : INK),
   });
   window.SB = SB;

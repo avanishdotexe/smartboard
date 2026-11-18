@@ -36,7 +36,7 @@
   const hasInk = () => S.pages.some((p) => p.length);
   function snap() {
     if (!isT() || !S.socket || !hasInk()) return;
-    ls.set({ title: S.title || '', bg: S.bg, pages: S.pages, at: Date.now() });
+    ls.set({ title: S.title || '', bg: S.bg, bgs: S.pages.map((_, i) => SB.bgOf(i)), pages: S.pages, at: Date.now() });
     updRestore();
   }
   function ago(t) { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; }
@@ -45,7 +45,7 @@
   async function restore() {
     const v = ls.get(); if (!v || !Array.isArray(v.pages)) return toast('No auto-save found on this device.');
     if (!(await SB.uiConfirm(`Replace the current board with the auto-saved one (${v.pages.length} page${v.pages.length > 1 ? 's' : ''}, ${ago(v.at)})?`, 'Restore', true))) return;
-    S.socket.emit('board:load', { pages: v.pages, bg: v.bg, title: v.title }, (r) => { if (!r || !r.ok) toast((r && r.error) || 'Could not restore.'); });
+    S.socket.emit('board:load', { pages: v.pages, bg: v.bg, bgs: v.bgs, title: v.title }, (r) => { if (!r || !r.ok) toast((r && r.error) || 'Could not restore.'); });
   }
 
   // ---------- grid ----------
@@ -133,7 +133,7 @@
       (function frame(t) {
         if (stop || id !== run) return;
         const done = Math.min(total, (t - t0) / 1000 * speed);
-        ctx.setTransform(1, 0, 0, 1, 0, 0); SB.paintBg(ctx, S.bg);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); SB.paintBg(ctx, SB.bgOf(S.cur));
         let acc = 0;
         for (let i = 0; i < objs.length; i++) {
           const o = objs[i]; const u = units[i];
@@ -150,7 +150,31 @@
     again.onclick = play; play();
   }
 
+
+  // ---------- phone: extra top-bar buttons live in a "More" menu ----------
+  function initMore() {
+    const right = document.querySelector('.tb-right'); if (!right || $('#moreBtn')) return;
+    const btn = el('button', 'icon-btn'); btn.id = 'moreBtn'; btn.title = 'More'; btn.innerHTML = SB.svgOf('more');
+    if (!btn.innerHTML) btn.textContent = '⋯';
+    const menu = el('div', 'menu hidden'); menu.id = 'moreMenu';
+    const items = [
+      ['video', 'Video class', '#callBtn', false], ['present', 'Present mode', '#presentBtn', true],
+      ['image', 'Save page (PNG)', '#expPng', true], ['pdf', 'Save board (PDF)', '#expPdf', true], ['save', 'Save board file', '#expJson', true],
+      ['palette', 'Change theme', '#themeBtn', false], ['exit', 'Leave board', '#leaveBtn', false],
+    ];
+    items.forEach(([ic, txt, sel, tOnly]) => {
+      const b = el('button'); b.dataset.t = tOnly ? '1' : ''; const i = el('i'); i.innerHTML = SB.svgOf(ic); b.append(i, document.createTextNode(txt));
+      b.onclick = () => { menu.classList.add('hidden'); const t = $(sel); if (t) t.click(); };
+      menu.append(b);
+    });
+    right.insertBefore(btn, $('#leaveBtn'));
+    document.body.append(menu);
+    btn.onclick = (e) => { e.stopPropagation(); [...menu.children].forEach((b) => { b.style.display = b.dataset.t && !isT() ? 'none' : ''; }); menu.classList.toggle('hidden'); };
+    document.addEventListener('pointerdown', (e) => { if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) menu.classList.add('hidden'); });
+  }
+
   function init() {
+    initMore();
     const menu = $('#teachMenu'); if (!menu) return;
     const anchor = $('#mAttBtn');
     const add = (id, ic, txt, fn) => { const b = el('button'); b.id = id; const i = el('i'); i.dataset.icon = ic; i.innerHTML = SB.svgOf(ic); const sp = el('span', null, txt); b.append(i, sp); b.onclick = () => { hideMenus(); fn(); }; menu.insertBefore(b, anchor); return b; };

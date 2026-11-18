@@ -432,7 +432,12 @@
     const d = el('div', 'msg ' + (m.role === 'teacher' ? 't' : '') + (m.name === S.name && !isT() || (isT() && m.role === 'teacher') ? ' me' : ''));
     d.append(el('small', null, m.role === 'teacher' ? 'Teacher' : m.name), document.createTextNode(m.text));
     chatList.append(d); chatList.scrollTop = chatList.scrollHeight;
-    if (!silent && chatPanel.classList.contains('hidden')) { unread++; $('#chatDot').classList.remove('hidden'); }
+    const mine = m.name === S.name && !isT() || (isT() && m.role === 'teacher');
+    if (!silent && !mine && chatPanel.classList.contains('hidden')) {
+      unread++; const dot = $('#chatDot'); dot.textContent = unread > 9 ? '9+' : String(unread); dot.classList.remove('hidden');
+      $('#chatBtn').classList.add('has-new');
+      toast((m.role === 'teacher' ? 'Teacher' : m.name) + ': ' + (m.text.length > 50 ? m.text.slice(0, 50) + '…' : m.text), { id: 'chatnew', ms: 2200 });
+    }
   }
   function buildChat() {
     chatPanel = el('div', 'chat-panel hidden'); chatPanel.id = 'chatPanel';
@@ -450,18 +455,33 @@
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); e.stopPropagation(); });
     const sb = btn('Send', 'primary', send); foot.append(inp, sb);
     chatPanel.append(head, chatList, foot); $('#app').append(chatPanel);
-    $('#chatBtn').onclick = () => { chatPanel.classList.toggle('hidden'); if (!chatPanel.classList.contains('hidden')) { unread = 0; $('#chatDot').classList.add('hidden'); chatList.scrollTop = chatList.scrollHeight; setTimeout(() => inp.focus(), 40); } };
+    $('#chatBtn').onclick = () => { chatPanel.classList.toggle('hidden'); if (!chatPanel.classList.contains('hidden')) { unread = 0; $('#chatDot').classList.add('hidden'); $('#chatBtn').classList.remove('has-new'); chatList.scrollTop = chatList.scrollHeight; setTimeout(() => inp.focus(), 40); } };
   }
   function setChatOn(on) {
     S.chatOn = on;
     const cb = $('#chatOnCb'); if (cb) cb.checked = on;
     const inp = $('#chatInput'); if (inp && !isT()) { inp.disabled = !on; inp.placeholder = on ? 'Type a message…' : 'The teacher turned chat off'; }
   }
-  let confCount = 0;
-  function setConf(n) {
+  let confCount = 0, confNames = [], confPop = null;
+  function renderConfPop() {
+    if (!confPop) return;
+    confPop.textContent = '';
+    confPop.append(el('b', null, 'Not clear (' + confNames.length + ')'));
+    const ul = el('div', 'conf-list');
+    confNames.forEach((n) => ul.append(el('span', 'conf-name', n)));
+    if (!confNames.length) ul.append(el('span', 'muted', 'Nobody right now'));
+    const clr = btn('Clear all', 'soft', () => { emit('confuse:clear', {}); confPop.classList.add('hidden'); });
+    confPop.append(ul, clr);
+  }
+  function setConf(n, names, who) {
+    confNames = Array.isArray(names) ? names : confNames;
     if (isT()) {
-      if (n > confCount && n > 0) toast(`${n} student${n > 1 ? 's' : ''} said: not clear`, { id: 'conf', ms: 2500 });
+      if (who) toast(who + ' said: not clear 🤔', { id: 'conf', ms: 3000 });
+      else if (n > confCount && n > 0) toast(`${n} student${n > 1 ? 's' : ''} said: not clear`, { id: 'conf', ms: 2500 });
       $('#confChip').classList.toggle('hidden', n === 0);
+      $('#confChip').title = confNames.length ? 'Not clear: ' + confNames.join(', ') : 'Students who did not understand';
+      if (n === 0 && confPop) confPop.classList.add('hidden');
+      renderConfPop();
     }
     confCount = n; $('#confN').textContent = n;
   }
@@ -544,7 +564,7 @@
 
   /* ================= board file: save and open ================= */
   function saveBoardFile() {
-    const data = { app: 'SmartBoard', v: 1, title: S.title || '', bg: S.bg, pages: S.pages, saved: new Date().toISOString() };
+    const data = { app: 'SmartBoard', v: 1, title: S.title || '', bg: S.bg, bgs: S.pages.map((_, i) => SB.bgOf(i)), pages: S.pages, saved: new Date().toISOString() };
     const name = (S.title || 'board').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'board';
     SB.saveBlob(new Blob([JSON.stringify(data)], { type: 'application/json' }), `${name}.smartboard.json`);
     toast('Board file saved. Use Teach > Open a board file to bring it back.', { ms: 3200 });
@@ -557,7 +577,7 @@
         const data = JSON.parse(await f.text());
         if (!data || data.app !== 'SmartBoard' || !Array.isArray(data.pages)) throw new Error('This is not a SmartBoard file.');
         if (!(await SB.uiConfirm(`Replace the current board with "${f.name}" (${data.pages.length} page${data.pages.length > 1 ? 's' : ''})? Students will see the new board.`, 'Open file', true))) return;
-        const r = await ask('board:load', { pages: data.pages, bg: data.bg, title: data.title });
+        const r = await ask('board:load', { pages: data.pages, bg: data.bg, bgs: data.bgs, title: data.title });
         if (!r.ok) toast(r.error || 'Could not open this file.');
       } catch (e) { toast('Could not open the file: ' + e.message, { ms: 3500 }); }
     };
@@ -587,7 +607,14 @@
     $('#expJson').onclick = () => { closeMenus(); saveBoardFile(); };
     $('#recChip').onclick = stopRec;
     $('#brkChip').onclick = () => { if (isT()) { fillBrk(); openModal('mBrk'); } };
-    $('#confChip').onclick = () => emit('confuse:clear', {});
+    confPop = el('div', 'conf-pop hidden'); confPop.id = 'confPop'; document.body.append(confPop);
+    $('#confChip').onclick = (e) => {
+      e.stopPropagation(); renderConfPop();
+      const r = $('#confChip').getBoundingClientRect();
+      confPop.style.top = (r.bottom + 8) + 'px'; confPop.style.left = Math.max(8, Math.min(innerWidth - 230, r.left)) + 'px';
+      confPop.classList.toggle('hidden');
+    };
+    document.addEventListener('pointerdown', (e) => { if (confPop && !confPop.contains(e.target) && !$('#confChip').contains(e.target)) confPop.classList.add('hidden'); });
     $('#confBtn').onclick = () => emit('confuse:toggle', {});
     // OCR button in the selection bar
     const bar = $('#selBar'); const ob = el('button'); ob.id = 'selOcr'; ob.title = 'Turn handwriting into typed text'; ob.textContent = 'T↻'; ob.style.fontSize = '12px'; ob.onclick = openOcr;
@@ -600,7 +627,7 @@
     hook('net:chat:msg', (m) => chatAdd(m));
     hook('net:chat:on', setChatOn);
     hook('net:chat:clear', () => { chatList.textContent = ''; chatList.append(el('div', 'chat-empty', 'Chat cleared.')); });
-    hook('net:confuse:state', (d) => setConf(d.n));
+    hook('net:confuse:state', (d) => setConf(d.n, d.names, d.who));
     hook('net:confuse:mine', (d) => { $('#confBtn').classList.toggle('on', !!d.on); $('#confBtn span').textContent = d.on ? 'Told teacher' : 'Not clear'; if (d.on) toast('The teacher knows you did not understand', { ms: 1800 }); });
     hook('state', (st) => {
       Object.keys(G).forEach((k) => geoHide(k, false));
@@ -611,7 +638,7 @@
       if (!(st.chat || []).length) chatList.append(el('div', 'chat-empty', 'No messages yet. Ask a doubt or say hello.'));
       (st.chat || []).forEach((m) => chatAdd(m, true));
       setChatOn(st.chatOn !== false);
-      setConf(st.confuse || 0);
+      setConf(st.confuse || 0, st.confNames || []);
       $('#confBtn').classList.toggle('on', !!st.confMine);
       if ($('#confBtn span')) $('#confBtn span').textContent = st.confMine ? 'Told teacher' : 'Not clear';
     });

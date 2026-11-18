@@ -114,12 +114,16 @@
       b.assign.set(cid, sizes.indexOf(Math.min(...sizes)));
     }
 
+    const confNames = (r) => [...(r.conf || [])].map((id) => (clients.get(id) || {}).name).filter(Boolean);
+    const confView = (r, who) => ({ n: r.conf.size, names: confNames(r), who: who || null });
+
     function stateOf(r, cid) {
       const c = clients.get(cid);
       return {
         pages: r.pages.map((p) => p.objects),
         current: r.current,
         bg: r.bg,
+        bgs: r.pages.map((p) => p.bg || r.bg),
         studentDraw: r.studentDraw,
         count: r.members.size,
         title: r.title,
@@ -133,6 +137,7 @@
         chat: (r.chat || []).slice(-100),
         chatOn: r.chatOn !== false,
         confuse: (r.conf || new Set()).size,
+        confNames: c && c.role === 'teacher' ? confNames(r) : null,
         confMine: !!(r.conf && r.conf.has(cid)),
         people: c && c.role === 'teacher' ? peopleOf(r) : null,
         hand: !!(c && c.hand),
@@ -151,7 +156,7 @@
         const a = r.att[c.attKey]; a.open = Math.max(0, a.open - 1);
         if (a.open === 0 && a.at) { a.ms += now() - a.at; a.at = null; a.last = now(); }
       }
-      if (r.conf && r.conf.delete(cid)) toTeachers(r, 'confuse:state', { n: r.conf.size });
+      if (r.conf && r.conf.delete(cid)) toTeachers(r, 'confuse:state', confView(r));
       if (r.brk && r.brk.assign.delete(cid)) pushBrk(r);
       r.last = now();
       toRoom(r, 'room:count', r.members.size);
@@ -208,6 +213,7 @@
         const r = rooms.get(String(d.code || '').trim().toUpperCase());
         if (!r) return ack({ ok: false, error: 'Room code not found. Please check the code and try again.' });
         const teacher = !!d.key && d.key === r.key;
+        if (!teacher && !clean(d.name, 24)) return ack({ ok: false, error: 'Please enter your name to join.' });
         enter(cid, r, teacher ? 'teacher' : 'student', teacher ? 'Teacher' : clean(d.name, 24) || 'Student');
         return ack({ ok: true, code: r.code, role: teacher ? 'teacher' : 'student', state: stateOf(r, cid) });
       }
@@ -304,8 +310,9 @@
         // ----- pages -----
         case 'page:add': {
           if (!isT || r.pages.length >= MAX_PAGES) return ack({ ok: false });
-          r.pages.push(newPage()); r.current = r.pages.length - 1;
-          touch(); all('page:added', { index: r.current }); ack({ ok: true, index: r.current }); break;
+          const prev = r.pages[r.current]; r.pages.push(newPage()); r.current = r.pages.length - 1;
+          r.pages[r.current].bg = (prev && prev.bg) || r.bg;
+          touch(); all('page:added', { index: r.current, bg: r.pages[r.current].bg }); ack({ ok: true, index: r.current }); break;
         }
         case 'page:go': {
           if (!isT || !pg(d.index)) return;
@@ -322,8 +329,8 @@
           if (!isT || !src || r.pages.length >= MAX_PAGES) return ack && ack({ ok: false });
           const copy = JSON.parse(JSON.stringify(src.objects)).map((o, k) => { o.id = Math.random().toString(36).slice(2, 9) + k; return o; });
           const idx = d.index + 1;
-          r.pages.splice(idx, 0, { objects: copy, redo: [] }); r.current = idx;
-          touch(); all('page:duped', { index: idx, objects: copy }); break;
+          r.pages.splice(idx, 0, { objects: copy, redo: [], bg: src.bg || r.bg }); r.current = idx;
+          touch(); all('page:duped', { index: idx, objects: copy, bg: src.bg || r.bg }); break;
         }
         case 'curtain:set': {
           if (!isT) return;
@@ -333,8 +340,12 @@
 
         // ----- board settings -----
         case 'bg:set': {
-          if (!isT || BACKGROUNDS.indexOf(data) < 0) return;
-          r.bg = data; touch(); others('bg:set', data); break;
+          const bgv = data && typeof data === 'object' ? data.bg : data;
+          const pgi = data && typeof data === 'object' && Number.isInteger(data.page) ? data.page : r.current;
+          if (!isT || BACKGROUNDS.indexOf(bgv) < 0 || !r.pages[pgi]) return;
+          r.pages[pgi].bg = bgv; r.bg = bgv;
+          if (data && data.all) r.pages.forEach((p) => { p.bg = bgv; });
+          touch(); others('bg:set', { page: pgi, bg: bgv, all: !!(data && data.all) }); break;
         }
         case 'perm:set': {
           if (!isT) return;
@@ -512,7 +523,7 @@
           if (r.pages.length + n > MAX_PAGES) return ack({ ok: false, error: 'Not enough free pages.' });
           for (let i = students.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [students[i], students[j]] = [students[j], students[i]]; }
           const pages = [];
-          for (let i = 0; i < n; i++) { r.pages.push(newPage()); pages.push(r.pages.length - 1); }
+          for (let i = 0; i < n; i++) { r.pages.push(newPage()); r.pages[r.pages.length - 1].bg = r.bg; pages.push(r.pages.length - 1); }
           r.brk = { n, pages, assign: new Map() };
           students.forEach((id, i) => r.brk.assign.set(id, i % n));
           all('pages:grew', { count: r.pages.length });
@@ -556,12 +567,12 @@
           const on = !r.conf.has(cid);
           if (on) r.conf.add(cid); else r.conf.delete(cid);
           send(cid, 'confuse:mine', { on });
-          toTeachers(r, 'confuse:state', { n: r.conf.size }); break;
+          toTeachers(r, 'confuse:state', confView(r, on ? c.name : null)); break;
         }
         case 'confuse:clear': {
           if (!isT) return;
           r.conf = new Set();
-          all('confuse:state', { n: 0 });
+          all('confuse:state', { n: 0, names: [] });
           r.members.forEach((id) => { if (clients.get(id).role !== 'teacher') send(id, 'confuse:mine', { on: false }); }); break;
         }
 
@@ -572,9 +583,10 @@
           const pages = d.pages.map((objs) => (Array.isArray(objs) ? objs.filter(validObj).slice(0, MAX_OBJECTS) : []));
           try { size = JSON.stringify(pages).length; } catch (e) { size = 1e9; }
           if (size > 12e6) return ack({ ok: false, error: 'This board file is too large.' });
-          r.pages = pages.map((objects) => ({ objects, redo: [] }));
+          r.pages = pages.map((objects, i) => ({ objects, redo: [], bg: BACKGROUNDS.indexOf(Array.isArray(d.bgs) ? d.bgs[i] : d.bg) >= 0 ? (Array.isArray(d.bgs) ? d.bgs[i] : d.bg) : undefined }));
           r.current = 0; r.brk = null; r.curtain = null;
           if (BACKGROUNDS.indexOf(d.bg) >= 0) r.bg = d.bg;
+          r.pages.forEach((p) => { if (!p.bg) p.bg = r.bg; });
           if (d.title) r.title = clean(d.title, 60);
           touch();
           r.members.forEach((id) => send(id, 'board:loaded', stateOf(r, id)));
@@ -600,7 +612,7 @@
     function exportRooms() {
       return [...rooms.values()].map((r) => ({
         code: r.code, key: r.key, title: r.title, pages: r.pages.map((p) => p.objects),
-        current: r.current, bg: r.bg, studentDraw: r.studentDraw, last: r.last, owner: r.owner || null,
+        bgs: r.pages.map((p) => p.bg || r.bg), current: r.current, bg: r.bg, studentDraw: r.studentDraw, last: r.last, owner: r.owner || null,
       }));
     }
 
@@ -609,7 +621,7 @@
         if (!s || !s.code || !s.key || !Array.isArray(s.pages) || !s.pages.length || rooms.has(s.code)) return;
         rooms.set(s.code, {
           code: s.code, key: s.key, title: clean(s.title, 60),
-          pages: s.pages.map((objs) => ({ objects: Array.isArray(objs) ? objs : [], redo: [] })),
+          pages: s.pages.map((objs, i) => ({ objects: Array.isArray(objs) ? objs : [], redo: [], bg: Array.isArray(s.bgs) && BACKGROUNDS.indexOf(s.bgs[i]) >= 0 ? s.bgs[i] : undefined })),
           current: Math.max(0, Math.min(Number(s.current) || 0, s.pages.length - 1)),
           bg: BACKGROUNDS.indexOf(s.bg) >= 0 ? s.bg : 'white', studentDraw: !!s.studentDraw,
           poll: null, timer: null, members: new Set(), last: Number(s.last) || now(),
