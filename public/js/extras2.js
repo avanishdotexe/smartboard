@@ -106,9 +106,9 @@
 
   // ---------- yes / no poll ----------
   function yesNo() {
-    const rows = [...document.querySelectorAll('#pollOpts .opt-row')];
-    rows.forEach((r, i) => { const t = r.querySelector('.pollOpt'), c = r.querySelector('input[type=radio]'); t.value = i === 0 ? 'Yes' : i === 1 ? 'No' : ''; c.checked = false; });
-    openModal('mPoll'); setTimeout(() => { const q = $('#pollQ'); q.focus(); q.select(); }, 80);
+    // one tap: no question to type. Students just press 👍 (understood) or 👎 (not yet).
+    SB.emit('poll:start', { question: 'Did you understand? 👍 or 👎', options: ['👍', '👎'] }, (r) => { if (r && r.ok === false) SB.toast(r.error || 'Could not start the poll.'); });
+    SB.toast('👍 / 👎 poll started. Students can vote now.', { ms: 2000 });
   }
 
   // ---------- page replay ----------
@@ -181,8 +181,7 @@
     add('mOverviewBtn', 'copy', 'All pages (overview)', openOverview);
     add('mCheerBtn', 'smile', 'Cheer the class 🎉', () => emit('cheer:go', { text: CHEERS[(Math.random() * CHEERS.length) | 0] }));
     const gb = add('mGridBtn', 'grid', 'Show grid', toggleGrid); gb.querySelector('span').id = 'mGridTxt';
-    add('mYesNoBtn', 'check', 'Yes / No poll', yesNo);
-    const pq = $('#mPoll .row.end'); if (pq) { const yb = el('button', 'btn ghost', 'Fill Yes / No'); yb.onclick = () => yesNo(); pq.insertBefore(yb, pq.firstChild); }
+    add('mYesNoBtn', 'check', '👍 / 👎 quick poll', yesNo);
     add('mReplayBtn', 'present', 'Replay this page', replay);
     add('mLbBtn', 'poll', 'Quiz leaderboard', () => emit('lb:show', {}));
     add('mLbResetBtn', 'trash', 'Reset quiz scores', () => emit('lb:clear', {}));

@@ -79,7 +79,19 @@
     card.appendChild(meta);
 
     const showCounts = Array.isArray(v.counts);
-    v.options.forEach((text, i) => {
+    if (v.options.length === 2 && v.options[0] === '👍' && v.options[1] === '👎') {
+      const tw = el('div', 'thumbs');
+      v.options.forEach((text, i) => {
+        const canVote = !teacher && v.open && v.myVote === null;
+        const b = el('button', 'thumb-btn' + (v.myVote === i ? ' mine' : '')); b.disabled = !canVote;
+        b.append(document.createTextNode(text));
+        if (showCounts) b.append(el('small', null, `${v.counts[i]} · ${v.total ? Math.round((v.counts[i] / v.total) * 100) : 0}%`));
+        if (canVote) b.onclick = () => emit('poll:vote', { id: v.id, choice: i });
+        tw.appendChild(b);
+      });
+      card.appendChild(tw);
+    }
+    else v.options.forEach((text, i) => {
       const canVote = !teacher && v.open && v.myVote === null;
       const o = el(canVote ? 'button' : 'div', 'popt');
       if (v.myVote === i) o.classList.add('mine');

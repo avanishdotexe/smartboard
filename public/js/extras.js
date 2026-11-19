@@ -406,6 +406,50 @@
   /* ================= attendance ================= */
   const fmtTime = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const fmtMin = (ms) => (ms < 60000 ? '<1 min' : Math.round(ms / 60000) + ' min');
+  async function attendancePdf(list) {
+    try {
+      toast('Making the PDF…', { id: 'attpdf', ms: 0 });
+      await SB.loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+      const PW = pdf.internal.pageSize.getWidth(), PH = pdf.internal.pageSize.getHeight(), M = 40;
+      const clip = (t, n) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+      const here = list.filter((a) => a.here).length;
+      let y = 0;
+      const head = () => {
+        pdf.setFillColor(255, 138, 76); pdf.rect(0, 0, PW, 70, 'F');
+        pdf.setTextColor(255, 255, 255); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(20); pdf.text('Attendance report', M, 32);
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11);
+        pdf.text(clip(S.title || 'SmartBoard class', 50) + '   |   Code ' + (S.code || '-') + '   |   ' + new Date().toLocaleString(), M, 52);
+        y = 96;
+      };
+      const cols = [M, M + 28, M + 200, M + 290, M + 380, M + 460];
+      const th = () => {
+        pdf.setFillColor(238, 241, 246); pdf.rect(M - 6, y - 14, PW - M * 2 + 12, 22, 'F');
+        pdf.setTextColor(40, 48, 64); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10);
+        ['#', 'Student', 'Joined', 'Time in class', 'Times joined', 'Status'].forEach((h, i) => pdf.text(h, cols[i], y));
+        y += 22;
+      };
+      head();
+      pdf.setTextColor(40, 48, 64); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
+      pdf.text(`Total students: ${list.length}     In class now: ${here}     Left: ${list.length - here}`, M, y); y += 28;
+      th();
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
+      list.forEach((a, i) => {
+        if (y > PH - 50) { pdf.addPage(); head(); th(); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); }
+        if (i % 2) { pdf.setFillColor(248, 249, 252); pdf.rect(M - 6, y - 12, PW - M * 2 + 12, 20, 'F'); }
+        pdf.setTextColor(40, 48, 64);
+        pdf.text(String(i + 1), cols[0], y); pdf.text(clip(a.name, 28), cols[1], y);
+        pdf.text(fmtTime(a.first), cols[2], y); pdf.text(fmtMin(a.ms), cols[3], y); pdf.text(String(a.joins), cols[4], y);
+        if (a.here) pdf.setTextColor(20, 140, 90); else pdf.setTextColor(150, 90, 40);
+        pdf.text(a.here ? 'In class' : 'Left', cols[5], y);
+        y += 20;
+      });
+      pdf.setTextColor(140, 148, 165); pdf.setFontSize(9); pdf.text('Made with SmartBoard', M, PH - 24);
+      SB.saveBlob(pdf.output('blob'), `attendance-${S.code || 'class'}.pdf`);
+      SB.toastDone('attpdf'); toast('Attendance PDF saved 📄');
+    } catch (e) { SB.toastDone('attpdf'); toast('Could not make the PDF (internet needed).'); }
+  }
   async function openAttendance() {
     const { body } = ATT; body.textContent = ''; openModal('mAtt');
     const r = await ask('att:get', {});
@@ -416,7 +460,7 @@
     const th = el('tr'); ['Student', 'Joined', 'Time in class', 'Status'].forEach((h) => th.append(el('th', null, h))); t.append(th);
     list.forEach((a) => { const tr = el('tr'); tr.append(el('td', null, a.name), el('td', null, fmtTime(a.first)), el('td', null, fmtMin(a.ms)), (() => { const td = el('td'); td.append(el('span', 'pill ' + (a.here ? 'in' : 'out'), a.here ? 'In class' : 'Left')); return td; })()); t.append(tr); });
     const row = el('div', 'row end');
-    row.append(btn('Close', 'ghost', () => closeModal('mAtt')), btn('Refresh', 'soft', openAttendance), btn('Download CSV', 'primary', () => {
+    row.append(btn('Close', 'ghost', () => closeModal('mAtt')), btn('Refresh', 'soft', openAttendance), btn('Save as PDF', 'soft', () => attendancePdf(list)), btn('Download CSV', 'primary', () => {
       const q = (v) => '"' + String(v).replace(/"/g, '""') + '"';
       const csv = '﻿' + ['Name,Joined,Last seen,Minutes in class,Status,Times joined'].concat(list.map((a) => [q(a.name), q(new Date(a.first).toLocaleString()), q(new Date(a.last).toLocaleString()), Math.round(a.ms / 6000) / 10, a.here ? 'In class' : 'Left', a.joins].join(','))).join('\n');
       SB.saveBlob(new Blob([csv], { type: 'text/csv' }), `attendance-${S.code || 'class'}.csv`);

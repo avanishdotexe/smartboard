@@ -281,10 +281,15 @@
     { id: 'ink', name: 'Ink', meta: '#0b0f17' },
     { id: 'paper', name: 'Paper', meta: '#f4efe6' },
     { id: 'ocean', name: 'Ocean', meta: '#06202b' },
+    { id: 'forest', name: 'Forest', meta: '#0c1a14' },
+    { id: 'sunset', name: 'Sunset', meta: '#1c1230' },
+    { id: 'mint', name: 'Mint', meta: '#e8f5ef' },
+    { id: 'chalk', name: 'Blackboard', meta: '#1d3a2f' },
   ];
   const FEATURE_EVENTS = ['react', 'poll:state', 'timer:state', 'people', 'hand:raised', 'hand:state', 'picked', 'room:title', 'call:state', 'rtc:joined', 'rtc:left', 'rtc:sig', 'rtc:ctl', 'ov:set', 'ask:state', 'break:state', 'chat:msg', 'chat:on', 'chat:clear', 'confuse:state', 'confuse:mine', 'cheer', 'lb:state'];
 
   const ICONS = {
+    stretch: '<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M3 5v14M21 5v14"/>',
     full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
     scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
     share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.600 13.500 6.800 4M15.400 6.500l-6.800 4"/>',
@@ -683,7 +688,7 @@
         if (o.type === 'pen' && o.ps && o.pts && o.pts.length >= 2) { drawPenStyle(ctx, o); break; }
         ctx.strokeStyle = ctx.fillStyle = o.color || '#000';
         if (o.type === 'eraser') { ctx.lineWidth = o.size * 3; ctx.globalCompositeOperation = 'destination-out'; }
-        else if (o.type === 'hl') { ctx.lineWidth = o.size * 3.2; ctx.globalAlpha = 0.38; ctx.lineCap = 'square'; }
+        else if (o.type === 'hl') { const hs = o.hs || 'classic'; ctx.lineWidth = o.size * (hs === 'thin' ? 1.6 : 3.2); ctx.globalAlpha = hs === 'soft' ? 0.2 : hs === 'bold' ? 0.62 : 0.38; ctx.lineCap = hs === 'round' || hs === 'thin' ? 'round' : 'square'; }
         else ctx.lineWidth = o.size;
         if (o.pts && o.pts.length >= 2) strokePath(ctx, o.pts);
         break;
@@ -932,7 +937,7 @@
     const cnt = $('#selCount'); cnt.classList.remove('hidden'); cnt.textContent = list.length + ' selected';
     $('#selFont').classList.add('hidden'); $('#selFill').classList.add('hidden');
     $('#selColorWrap').classList.toggle('hidden', list.every((o) => o.type === 'image'));
-    $('#selFull').classList.add('hidden');
+    $('#selFull').classList.add('hidden'); $('#selStretch').classList.add('hidden');
     const first = list.find((o) => o.type !== 'image');
     if (first) $('#selColor').style.background = /^#[0-9a-f]{6}$/i.test(first.color) ? first.color : '#000000';
     const bw = bar.offsetWidth || 160, sw = stage.clientWidth;
@@ -982,7 +987,7 @@
     $('#selFill').classList.toggle('hidden', !['rect', 'ellipse', 'shape'].includes(o.type));
     $('#selFont').classList.toggle('hidden', o.type !== 'text');
     $('#selColorWrap').classList.toggle('hidden', o.type === 'image');
-    $('#selFull').classList.toggle('hidden', o.type !== 'image');
+    $('#selFull').classList.toggle('hidden', o.type !== 'image'); $('#selStretch').classList.toggle('hidden', o.type !== 'image');
     if (o.type !== 'image') $('#selColor').style.background = /^#[0-9a-f]{6}$/i.test(o.color) ? o.color : '#000000';
     if (o.type === 'text') $('#selFont').textContent = o.f === 'hand' ? 'Aa·hand' : 'Aa';
   }
@@ -1574,6 +1579,7 @@
       : { ...base, type, x1: sp[0], y1: sp[1], x2: sp[0], y2: sp[1], fill: S.fill };
     if (S.tool === 'shape') o.k = S.shapeKind;
     if (S.tool === 'pen' && S.penStyle !== 'normal') o.ps = S.penStyle;
+    if (S.tool === 'hl' && S.hlStyle && S.hlStyle !== 'classic') o.hs = S.hlStyle;
     if (S.dash && !DRAW_TOOLS.includes(S.tool)) o.dash = true;
     if (S.tool === 'arrow' && S.both) o.both = true;
     S.drawing = { o, page: S.cur, buf: [], timer: null, dirty: false };
@@ -1848,7 +1854,7 @@
       let m = document.getElementById('mFit');
       if (!m) {
         m = document.createElement('div'); m.id = 'mFit'; m.className = 'modal hidden';
-        m.innerHTML = '<div class="sheet"><div class="sheet-head"><h3 id="fitTitle">Place on board</h3></div><p class="hint">Full screen covers the whole board edge to edge. Normal keeps it smaller so you can write around it.</p><div class="row end"><button class="btn ghost" data-fit="normal">Normal size</button><button class="btn primary" data-fit="full">Full screen</button></div></div>';
+        m.innerHTML = '<div class="sheet"><div class="sheet-head"><h3 id="fitTitle">Place on board</h3></div><p class="hint">Choose how it sits on the board. You can change it later with the buttons that appear when you select it.</p><div class="fit-opts"><button class="btn primary" data-fit="full"><b>Full screen</b><small>Fills the board, keeps the shape</small></button><button class="btn soft" data-fit="stretch"><b>Stretch</b><small>Fills every corner (can look stretched)</small></button><button class="btn ghost" data-fit="normal"><b>Normal size</b><small>Smaller, write around it</small></button></div></div>';
         document.body.append(m);
       }
       $('#fitTitle').textContent = 'Place ' + what + ' on the board';
@@ -1858,6 +1864,7 @@
       m.addEventListener('click', onc);
     });
   }
+  function stretchBoard(o) { o.x = 0; o.y = 0; o.w = W; o.h = H; }
   function fillBoard(o) {
     const k = Math.min(W / o.w, H / o.h);
     const w = o.w * k, h = o.h * k;
@@ -1870,7 +1877,9 @@
       const mode = await askFit('the image');
       const { src, w, h } = await readScaled(file, 2600);
       const k = mode === 'full' ? Math.min(W / w, H / h) : Math.min((W * 0.8) / w, (H * 0.8) / h);
-      addObj({ id: uid(), type: 'image', x: (W - w * k) / 2, y: (H - h * k) / 2, w: w * k, h: h * k, src });
+      const ob = { id: uid(), type: 'image', x: (W - w * k) / 2, y: (H - h * k) / 2, w: w * k, h: h * k, src };
+      if (mode === 'stretch') stretchBoard(ob);
+      addObj(ob);
       toast(mode === 'full' ? 'Image added full screen 🖼️' : 'Image added. Use the Select tool to move or resize it 🖼️');
     } catch { toast('Could not load the image.'); }
   }
@@ -2233,6 +2242,7 @@
     };
 
     $('#selDup').onclick = duplicateSel;
+    $('#selStretch').onclick = () => { const o = S.sel && findObj(S.sel.page, S.sel.id); if (!o || o.type !== 'image') return; stretchBoard(o); emit('obj:replace', { page: S.sel.page, obj: clone(o) }); render(); placeSel(); toast('Image stretched to the board'); };
     $('#selFull').onclick = () => { const o = S.sel && findObj(S.sel.page, S.sel.id); if (!o || o.type !== 'image') return; fillBoard(o); emit('obj:replace', { page: S.sel.page, obj: clone(o) }); render(); placeSel(); toast('Image fitted to the full board'); };
     $('#selDel').onclick = deleteSel;
     $('#selFont').onclick = toggleSelFont;
