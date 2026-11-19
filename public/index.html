@@ -166,7 +166,8 @@
         <button id="selFont" class="hidden" title="Switch font">Aa</button>
         <button id="selColorWrap" class="selcolor" title="Change colour"><i id="selColor"></i></button>
         <button id="selFill" class="hidden" title="Fill on/off"><i data-icon="fill"></i></button>
-        <button id="selFull" class="hidden" title="Make this picture fill the whole board"><i data-icon="full"></i></button>
+        <button id="selFull" class="hidden" title="Fit full screen (keeps shape)"><i data-icon="full"></i></button>
+        <button id="selStretch" class="hidden" title="Stretch to fill the whole board"><i data-icon="stretch"></i></button>
         <button id="selDup" title="Duplicate (Ctrl+D)"><i data-icon="copy"></i></button>
         <button id="selDel" class="danger" title="Delete (Del)"><i data-icon="trash"></i></button>
       </div>
@@ -246,11 +247,15 @@
     <button id="pUndo" class="icon-btn teacher-only" data-lab="Undo" title="Undo (Ctrl+Z)"><i data-icon="undo"></i></button>
     <button id="pRedo" class="icon-btn teacher-only" data-lab="Redo" title="Redo (Ctrl+Y)"><i data-icon="redo"></i></button>
     <span class="vsep"></span>
+    <button class="icon-btn teacher-only" data-ptool="select" data-lab="Select" title="Select / move / resize"><i data-icon="select"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="lasso" data-lab="Lasso" title="Lasso: circle objects to select them"><i data-icon="lasso"></i></button>
     <button class="icon-btn teacher-only" data-ptool="pen" data-lab="Pencil" title="Pen"><i data-icon="pen"></i></button>
     <button class="icon-btn teacher-only" data-ptool="hl" data-lab="Marker" title="Highlighter"><i data-icon="hl"></i></button>
     <button class="icon-btn teacher-only" data-ptool="eraser" data-lab="Eraser" title="Eraser"><i data-icon="eraser"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="text" data-lab="Text" title="Type text"><i data-icon="text"></i></button>
     <button class="icon-btn teacher-only" data-ptool="laser" data-lab="Laser" title="Laser"><i data-icon="laser"></i></button>
     <button class="icon-btn teacher-only" data-ptool="spot" data-lab="Spotlight" title="Spotlight"><i data-icon="spot"></i></button>
+    <button id="pThumbs" class="icon-btn teacher-only" data-lab="👍/👎" title="Quick thumbs up / down poll"><span style="font-size:18px">👍</span></button>
     <button class="icon-btn teacher-only curtain-btn" data-lab="Curtain" title="Cover the board and reveal slowly"><i data-icon="curtain"></i></button>
     <button id="pNext" class="icon-btn teacher-only" data-lab="Next" title="Next page"><i data-icon="chevR"></i></button>
     <button id="pAdd" class="icon-btn teacher-only" data-lab="New page" title="Add a new page"><i data-icon="plus"></i></button>
@@ -363,6 +368,7 @@
 <script src="js/extras.js"></script>
 <script src="js/extras2.js"></script>
 <script src="js/extras3.js"></script>
+<script src="js/extras4.js"></script>
 <script src="js/account.js"></script>
 </body>
 </html>
