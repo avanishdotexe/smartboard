@@ -2347,7 +2347,19 @@
 
     // auto-join when opened with ?room=CODE
     const q = new URLSearchParams(location.search).get('room');
-    if (q) { $('#codeInput').value = q.toUpperCase(); joinBoard(q); }
+    if (q) {
+      $('#codeInput').value = q.toUpperCase();
+      if (keyFor(q.toUpperCase()) || $('#nameInput').value.trim()) joinBoard(q);
+      else {
+        // a student opened the shared link / QR: ask only for the name, then join as a student
+        const card = $('#nameInput').closest('.card'); if (card) card.classList.add('pulse-card');
+        const ni = $('#nameInput'); ni.placeholder = 'Type your name to join'; 
+        $('#joinErr').textContent = 'You are joining class ' + q.toUpperCase() + ' as a student. Type your name and press Join.';
+        $('#joinErr').classList.add('info');
+        setTimeout(() => { try { ni.scrollIntoView({ block: 'center', behavior: 'smooth' }); ni.focus(); } catch (e) { /* ignore */ } }, 400);
+        ni.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinBoard($('#codeInput').value); });
+      }
+    }
   }
 
   Object.assign(SB, {

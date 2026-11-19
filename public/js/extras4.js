@@ -76,9 +76,9 @@
       btn.addEventListener('click', () => { was = S.tool === m; }, true);
       btn.addEventListener('click', () => {
         ['#stampMenu', '#shapeMenu', '#penMenu'].forEach((q) => { const e = $(q); if (e) e.classList.add('hidden'); });
-        if (was && !pop.classList.contains('hidden') && mode === m) { pop.classList.add('hidden'); return; }
+        if (!was) { pop.classList.add('hidden'); return; } // first click only picks the tool
+        if (!pop.classList.contains('hidden') && mode === m) { pop.classList.add('hidden'); return; }
         mode = m; draw(); pop.classList.remove('hidden'); place(btn);
-        if (S.tool !== m) setTool(m);
       });
     });
     document.querySelectorAll('.tool[data-tool]').forEach((b) => b.addEventListener('click', () => { if (!['hl', 'eraser'].includes(b.dataset.tool)) pop.classList.add('hidden'); }));
