@@ -816,3 +816,6 @@ html, body { overflow-x: hidden; }
 .poll-card .thumb-btn.mine { border-color: var(--accent); background: var(--raised-h); }
 .poll-card .thumb-btn small { display: block; font-size: 14px; font-weight: 800; margin-top: 2px; }
 .poll-card .thumb-btn:disabled { cursor: default; opacity: 1; }
+
+#joinErr.info { color: var(--accent2); font-weight: 600; }
+.pulse-card { box-shadow: 0 0 0 2px var(--accent2), var(--shadow); }
