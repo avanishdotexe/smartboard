@@ -149,3 +149,21 @@ smartboard/
 - **Curtain**: cover the board for students and reveal it slowly by dragging the orange bar (synced live).
 - **Copy page** button next to "New page".
 - **12 new wallpapers**: Cornell notes, number lines, table, month calendar, K-W-L chart, storyboard, Venn diagram, blue sky, lavender, slate, sand, galaxy.
+
+### 2.12 Mobile, warm-up and new class features
+- Server warm-up bar on the landing page, student name is compulsory, mobile "More" menu and layouts for 320px to tablets and landscape phones.
+- Chat icon shows a red unread count; the teacher sees the names of students who tapped "Not clear" (click the chip).
+- QR: Share (WhatsApp etc.) and Save QR picture in the invite box; students can Scan the QR from the landing page.
+- Every page keeps its own wallpaper (new pages inherit the current one; "Apply to all pages" option).
+- Images and PDFs ask "Full screen or Normal"; a Fill-board button appears when an image is selected. PDF pages render at about 2x board width (JPEG 94%) for sharp text.
+
+### 2.13 More teaching controls
+- Marker and Eraser open a popover (type + size) when clicked. Marker types: Classic, Round tip, Soft, Bold, Fine. Eraser: Rub out or Whole stroke.
+- Image / PDF upload: Full screen, Stretch or Normal; select a picture to get Full screen and Stretch buttons.
+- One-tap 👍 / 👎 poll (Teach menu, or the 👍 button in Present mode). No question needed.
+- Attendance can be saved as a PDF report.
+- Present mode now has Select, Lasso and Text. Four new themes: Forest, Sunset, Mint, Blackboard.
+
+### 2.14 Chat photos & teacher name
+- Teacher and students can send photos in chat (auto-shrunk to ≤ ~400 KB, tap to open full screen). Only the newest ~3 MB of photos are kept per room.
+- Teacher can set a display name (landing page or "Shown as" box in chat). Students see it with an orange **TEACHER** badge and a highlighted bubble, so it never looks like a student.
