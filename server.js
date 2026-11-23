@@ -23,6 +23,11 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 app.get('/health', (_req, res) => res.send('ok'));
+// Android app (Trusted Web Activity) proof file. Paste the JSON that PWABuilder gives you into assetlinks.json
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+  try { res.type('application/json').send(require('fs').readFileSync(path.join(__dirname, 'assetlinks.json'), 'utf8')); }
+  catch (e) { res.type('application/json').send('[]'); }
+});
 
 // ---------- room engine ----------
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -113,7 +118,7 @@ io.on('connection', (socket) => {
     await ready;
     if (ev === 'room:create') { // attach the logged-in teacher as owner (token is verified here, never trusted from the client)
       const a = args[0] && typeof args[0] === 'object' ? args[0] : {};
-      args[0] = { title: a.title, owner: auth.verify(a.token) };
+      args[0] = { title: a.title, tname: a.tname, owner: auth.verify(a.token) };
     }
     engine.handle(socket.id, ev, args[0], ack);
   });
