@@ -819,3 +819,31 @@ html, body { overflow-x: hidden; }
 
 #joinErr.info { color: var(--accent2); font-weight: 600; }
 .pulse-card { box-shadow: 0 0 0 2px var(--accent2), var(--shadow); }
+/* chat photos + teacher identity */
+.field .opt { font-style: normal; font-weight: 500; opacity: .65; font-size: 12px; }
+.tbadge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 99px; font-size: 9px; font-weight: 800; letter-spacing: .06em; background: var(--grad); color: var(--on-accent); vertical-align: 1px; }
+.msg.t { background: color-mix(in srgb, var(--accent) 22%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+.msg.t small { color: var(--accent); font-size: 11.5px; }
+.msg .msg-text { margin-top: 2px; }
+.chat-img { display: block; max-width: 100%; max-height: 190px; border-radius: 10px; margin: 3px 0; cursor: zoom-in; background: var(--raised); }
+.chat-gone { font-size: 12px; opacity: .7; font-style: italic; }
+.chat-name { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line); }
+.chat-name .input { padding: 6px 10px; font-size: 13px; flex: 1; min-width: 0; }
+.chat-foot .chat-pic { flex: none; }
+.photo-view { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,.88); display: grid; place-items: center; padding: 20px; }
+.photo-view.hidden { display: none; }
+.photo-view img { max-width: 100%; max-height: 86vh; border-radius: 12px; }
+.photo-view .photo-cap { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: #fff; font-weight: 600; }
+.photo-view .icon-btn { position: absolute; top: 14px; right: 14px; }
+/* attractive photo button */
+.chat-foot { align-items: center; }
+.chat-foot .chat-pic { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--grad); color: var(--on-accent); display: grid; place-items: center; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent); transition: transform .15s, box-shadow .15s; }
+.chat-foot .chat-pic svg { width: 22px; height: 22px; }
+.chat-foot .chat-pic:hover { transform: translateY(-1px) scale(1.06); }
+.chat-foot .chat-pic:active { transform: scale(.94); }
+.chat-foot .btn { align-self: stretch; }
+.chat-foot .chat-pic svg { width: 26px !important; height: 26px !important; }
+.chat-foot .chat-pic i { width: 24px !important; height: 24px !important; }
+/* "more options" corner mark on marker + eraser (same as pencil) */
+.tool[data-tool="hl"]::after, .tool[data-tool="eraser"]::after { content: ''; position: absolute; right: 6px; bottom: 6px; border: 3px solid transparent; border-top-color: currentColor; border-right-color: currentColor; opacity: .55; }
+.toolbar .tool[data-tool="hl"]::after, .toolbar .tool[data-tool="eraser"]::after { z-index: 2; right: 9px; bottom: 15px; }
