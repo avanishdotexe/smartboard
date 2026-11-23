@@ -36,6 +36,9 @@
     <div class="cards">
       <div class="card">
         <div class="card-top"><span class="card-ico t"><i data-icon="pen"></i></span><h2>I'm a teacher</h2></div>
+        <label class="field"><span>Your name <em class="opt">(optional, students will see it)</em></span>
+          <input id="teacherName" class="input" maxlength="24" placeholder="e.g. Avanish Sir" autocomplete="off">
+        </label>
         <label class="field"><span>Board name</span>
           <input id="titleInput" class="input" maxlength="60" placeholder="e.g. Class 10 - Quadratic Equations" autocomplete="off">
         </label>
@@ -133,8 +136,8 @@
     <button class="tool teacher-only" data-tool="select" data-lab="Select" title="Select / move / resize (V)"><i data-icon="select"></i></button>
     <button class="tool teacher-only" data-tool="lasso" data-lab="Lasso" title="Lasso (circle to select): draw a loop around objects (Q)"><i data-icon="lasso"></i></button>
     <button class="tool active" data-tool="pen" data-lab="Pencil" title="Pencil (P). Click again for pencil styles"><i data-icon="pen"></i></button>
-    <button class="tool" data-tool="hl" data-lab="Marker" title="Highlighter (H)"><i data-icon="hl"></i></button>
-    <button class="tool" data-tool="eraser" data-lab="Eraser" title="Eraser (E)"><i data-icon="eraser"></i></button>
+    <button class="tool" data-tool="hl" data-lab="Marker" title="Highlighter (H). Click again for size &amp; type"><i data-icon="hl"></i></button>
+    <button class="tool" data-tool="eraser" data-lab="Eraser" title="Eraser (E). Click again for size &amp; type"><i data-icon="eraser"></i></button>
     <span class="hsep"></span>
     <button class="tool" data-tool="line" data-lab="Line" title="Line (L)"><i data-icon="line"></i></button>
     <button class="tool" data-tool="arrow" data-lab="Arrow" title="Arrow (A)"><i data-icon="arrow"></i></button>
