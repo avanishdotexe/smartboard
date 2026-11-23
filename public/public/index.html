@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en" data-sb-theme="ink">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f17">
+  <meta name="description" content="SmartBoard: a live digital teaching board with polls, timer, smart shapes and templates.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SmartBoard">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SmartBoard - Live Digital Teaching Board</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23ffb84d'/%3E%3Cpath d='M16 40l10-10 8 8 14-16' stroke='%231a1203' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Noto+Sans+Devanagari:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="offlineBar" class="offline-bar hidden">You are offline. Live boards need an internet connection.</div>
+
+<!-- ================= LANDING ================= -->
+<section id="landing" class="view active">
+  <div class="glow g1"></div><div class="glow g2"></div>
+  <button id="themeBtnL" class="icon-btn theme-btn" title="Change theme"><i data-icon="palette"></i></button>
+  <div id="acctBar" class="acct-bar hidden"></div>
+  <div id="warmBar" class="warm-bar hidden" role="status"></div>
+  <div class="landing-wrap">
+    <div class="brand"><span class="logo" data-icon="logo"></span><span>SmartBoard</span></div>
+    <h1>Teach live. Make every class <em>interactive</em>.</h1>
+    <p class="sub">A shared board with polls, a class timer, smart shapes and ready-made templates. Students join with a code. No install, no login. Teachers can sign in to keep their boards.</p>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-top"><span class="card-ico t"><i data-icon="pen"></i></span><h2>I'm a teacher</h2></div>
+        <label class="field"><span>Your name <em class="opt">(optional, students will see it)</em></span>
+          <input id="teacherName" class="input" maxlength="24" placeholder="e.g. Avanish Sir" autocomplete="off">
+        </label>
+        <label class="field"><span>Board name</span>
+          <input id="titleInput" class="input" maxlength="60" placeholder="e.g. Class 10 - Quadratic Equations" autocomplete="off">
+        </label>
+        <button id="createBtn" class="btn primary big">Create new board</button>
+      </div>
+      <div class="card">
+        <div class="card-top"><span class="card-ico s"><i data-icon="users"></i></span><h2>I'm a student</h2></div>
+        <label class="field"><span>Your name</span>
+          <input id="nameInput" class="input" maxlength="24" placeholder="e.g. Avanish" autocomplete="off">
+        </label>
+        <div class="join-row">
+          <input id="codeInput" class="input code-input" maxlength="6" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          <button id="joinBtn" class="btn soft big">Join</button>
+        </div>
+        <p id="joinErr" class="err"></p>
+      </div>
+    </div>
+
+    <div id="recent" class="recent hidden">
+      <h3>Recent boards</h3>
+      <div id="recentList" class="recent-list"></div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><i data-icon="wand"></i><b>Auto shape</b><span>Rough circle, box or triangle turns perfect</span></div>
+      <div class="tile"><i data-icon="poll"></i><b>Live polls</b><span>Ask, vote, reveal the answer</span></div>
+      <div class="tile"><i data-icon="timer"></i><b>Class timer</b><span>Everyone sees the countdown</span></div>
+      <div class="tile"><i data-icon="hand"></i><b>Raise hand</b><span>Plus random student picker</span></div>
+      <div class="tile"><i data-icon="template"></i><b>Templates</b><span>Tables, Venn, mind map, graph</span></div>
+      <div class="tile"><i data-icon="qr"></i><b>QR invite</b><span>Scan to join in one tap</span></div>
+    </div>
+
+    <div class="install-row">
+      <button id="installBtn" class="btn ghost hidden"><i data-icon="download"></i><span>Install App</span></button>
+      <p id="iosHint" class="ios-hint hidden">To install on iPhone/iPad: tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BOARD APP ================= -->
+<section id="app" class="view">
+  <header class="topbar">
+    <div class="tb-left">
+      <div class="brand sm"><span class="logo" data-icon="logo"></span></div>
+      <input id="boardTitle" class="title-input" maxlength="60" placeholder="Untitled board" autocomplete="off" spellcheck="false">
+      <button id="codeChip" class="chip" title="Invite students"><span class="lbl">CODE</span><b id="codeText">------</b><i data-icon="qr"></i></button>
+      <span id="roleBadge" class="badge">Teacher</span>
+      <div id="timerChip" class="chip timer hidden" title="Class timer"><i data-icon="timer"></i><b id="timerText">00:00</b><button id="timerStop" class="x teacher-only" title="Stop timer"><i data-icon="close"></i></button></div>
+    </div>
+    <div class="tb-right">
+      <button id="handBtn" class="btn soft student-only"><i data-icon="hand"></i><span>Raise hand</span></button>
+      <button id="peopleBtn" class="chip" title="People on this board"><i data-icon="users"></i><b id="countText">1</b><span id="handDot" class="dot hidden"></span></button>
+      <div class="menu-wrap teacher-only">
+        <button id="teachBtn" class="btn accent-soft"><i data-icon="wand"></i><span>Teach</span><i data-icon="chevD" class="caret"></i></button>
+        <div id="teachMenu" class="menu hidden">
+          <button id="mPollBtn"><i data-icon="poll"></i>Quick poll</button>
+          <button id="mTimerBtn"><i data-icon="timer"></i>Class timer</button>
+          <button id="mPickBtn"><i data-icon="dice"></i>Pick a student</button>
+          <button id="mAskBtn"><i data-icon="help"></i>Ask a question / word cloud</button>
+          <button id="mBrkBtn"><i data-icon="users"></i>Breakout groups</button>
+          <button id="mGraphBtn"><i data-icon="chart"></i>Graph / equation plotter</button>
+          <button id="mAttBtn"><i data-icon="check"></i>Attendance</button>
+          <button id="mRecBtn"><i data-icon="video"></i><span id="mRecTxt">Record class</span></button>
+          <button class="curtain-btn"><i data-icon="curtain"></i>Curtain (hide / reveal board)</button>
+          <button id="mOpenBtn"><i data-icon="image"></i>Open a board file</button>
+          <button id="mTplBtn"><i data-icon="template"></i>Templates</button>
+          <button id="mGroupBtn"><i data-icon="users"></i>Make groups</button>
+          <button id="mHelpBtn"><i data-icon="help"></i>Shortcuts (?)</button>
+          <label class="switch keep" title="Let students draw too"><input type="checkbox" id="studentDrawToggle"><span class="slider"></span><em>Students can draw</em></label>
+        </div>
+      </div>
+      <div class="menu-wrap">
+        <button id="exportBtn" class="btn ghost"><i data-icon="save"></i><span>Save</span></button>
+        <div id="exportMenu" class="menu hidden">
+          <button id="expPng"><i data-icon="image"></i>Current page (PNG)</button>
+          <button id="expPdf"><i data-icon="pdf"></i>Whole board (PDF)</button>
+          <button id="expJson"><i data-icon="save"></i>Board file (.json, reopen later)</button>
+        </div>
+      </div>
+      <button id="confBtn" class="btn soft student-only" title="Tell the teacher you did not understand"><i data-icon="help"></i><span>Not clear</span></button>
+      <button id="confChip" class="chip teacher-only hidden" title="Students who said they did not understand. Click to reset"><i data-icon="help"></i><b id="confN">0</b></button>
+      <button id="brkChip" class="chip hidden" title="Breakout groups are running"><i data-icon="users"></i><b id="brkTxt">Breakout</b></button>
+      <button id="recChip" class="chip teacher-only hidden" title="Recording. Click to stop"><i data-icon="video"></i><b id="recTime">REC 0:00</b></button>
+      <button id="chatBtn" class="icon-btn" title="Class chat"><i data-icon="chat"></i><span id="chatDot" class="dot hidden"></span></button>
+      <div class="menu-wrap student-only"><button id="reactBtn" class="icon-btn" title="Send a reaction"><i data-icon="smile"></i></button><div id="reactMenu" class="menu react-menu hidden"></div></div>
+      <button id="callBtn" class="icon-btn call-btn" title="Start / join video class"><i data-icon="video"></i><span id="callDot" class="dot hidden"></span></button>
+      <button id="presentBtn" class="icon-btn" title="Present mode (F)"><i data-icon="present"></i></button>
+      <button id="themeBtn" class="icon-btn" title="Change theme"><i data-icon="palette"></i></button>
+      <button id="fsBtn" class="icon-btn" title="Fullscreen"><i data-icon="fullscreen"></i></button>
+      <button id="leaveBtn" class="icon-btn" title="Leave board"><i data-icon="exit"></i></button>
+    </div>
+  </header>
+
+  <aside id="toolbar" class="toolbar">
+    <button class="tool teacher-only" data-tool="select" data-lab="Select" title="Select / move / resize (V)"><i data-icon="select"></i></button>
+    <button class="tool teacher-only" data-tool="lasso" data-lab="Lasso" title="Lasso (circle to select): draw a loop around objects (Q)"><i data-icon="lasso"></i></button>
+    <button class="tool active" data-tool="pen" data-lab="Pencil" title="Pencil (P). Click again for pencil styles"><i data-icon="pen"></i></button>
+    <button class="tool" data-tool="hl" data-lab="Marker" title="Highlighter (H). Click again for size &amp; type"><i data-icon="hl"></i></button>
+    <button class="tool" data-tool="eraser" data-lab="Eraser" title="Eraser (E). Click again for size &amp; type"><i data-icon="eraser"></i></button>
+    <span class="hsep"></span>
+    <button class="tool" data-tool="line" data-lab="Line" title="Line (L)"><i data-icon="line"></i></button>
+    <button class="tool" data-tool="arrow" data-lab="Arrow" title="Arrow (A)"><i data-icon="arrow"></i></button>
+    <button class="tool" data-tool="rect" data-lab="Box" title="Rectangle (R)"><i data-icon="rect"></i></button>
+    <button class="tool" data-tool="ellipse" data-lab="Circle" title="Circle / Ellipse (O)"><i data-icon="ellipse"></i></button>
+    <button class="tool" data-tool="shape" data-lab="Shapes" title="More shapes (S)"><i data-icon="shapes"></i></button>
+    <span class="hsep"></span>
+    <button class="tool" data-tool="text" data-lab="Text" title="Text (T)"><i data-icon="text"></i></button>
+    <button class="tool" data-tool="stamp" data-lab="Stamps" title="Stamps"><i data-icon="stamp"></i></button>
+    <button class="tool" data-tool="note" data-lab="Sticky" title="Sticky note (N)"><i data-icon="note"></i></button>
+    <span class="hsep teacher-only"></span>
+    <button class="tool teacher-only" data-tool="laser" data-lab="Laser" title="Laser pointer (K)"><i data-icon="laser"></i></button>
+    <button class="tool teacher-only" id="geoBtn" data-lab="Geometry" title="Ruler, protractor and set squares"><i data-icon="ruler"></i></button>
+    <button class="tool teacher-only" data-tool="spot" data-lab="Spotlight" title="Spotlight: dim everything except one area (J)"><i data-icon="spot"></i></button>
+    <button class="tool act teacher-only" id="imgBtn" data-lab="Image" title="Insert image"><i data-icon="image"></i></button>
+    <button class="tool act teacher-only" id="pdfBtn" data-lab="PDF" title="Import PDF"><i data-icon="pdf"></i></button>
+  </aside>
+  <div id="stampMenu" class="stamp-menu hidden"></div>
+  <div id="shapeMenu" class="stamp-menu hidden"></div>
+  <div id="penMenu" class="stamp-menu pen-menu hidden"></div>
+
+  <main id="stageArea" class="stage-area">
+    <div id="stage" class="stage tool-pen">
+      <canvas id="bg"></canvas>
+      <canvas id="board"></canvas>
+      <div id="selBox" class="sel-box hidden"><i id="selHandle" class="sel-handle"></i></div>
+      <div id="selBar" class="sel-bar hidden">
+        <span id="selCount" class="sel-count hidden">1</span>
+        <button id="selFont" class="hidden" title="Switch font">Aa</button>
+        <button id="selColorWrap" class="selcolor" title="Change colour"><i id="selColor"></i></button>
+        <button id="selFill" class="hidden" title="Fill on/off"><i data-icon="fill"></i></button>
+        <button id="selFull" class="hidden" title="Fit full screen (keeps shape)"><i data-icon="full"></i></button>
+        <button id="selStretch" class="hidden" title="Stretch to fill the whole board"><i data-icon="stretch"></i></button>
+        <button id="selDup" title="Duplicate (Ctrl+D)"><i data-icon="copy"></i></button>
+        <button id="selDel" class="danger" title="Delete (Del)"><i data-icon="trash"></i></button>
+      </div>
+      <div id="geoLayer" class="geo-layer"></div>
+      <div id="curtain" class="curtain hidden"><i id="curtainHandle" class="curtain-handle" title="Drag down to reveal"></i><span class="curtain-txt">Curtain: hidden from students. Drag the bar down to reveal.</span></div>
+      <div id="cursorRing" class="cursor-ring"></div>
+      <div id="spot" class="spot"></div>
+      <div id="laserDot" class="laser"></div>
+      <div id="floats" class="floats"></div>
+    </div>
+    <div id="viewOnly" class="view-only">👀 View only. The teacher is sharing this board.</div>
+    <div id="zoomBar" class="zoom-bar" aria-label="Zoom">
+      <button id="zOut" title="Zoom out (-)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+      <button id="zFit" title="Back to full board (0)"><span id="zPct">100%</span></button>
+      <button id="zIn" title="Zoom in (+)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button id="zPan" title="Move the board with your finger or mouse"><i data-icon="move"></i></button>
+    </div>
+  </main>
+
+  <div id="pollCard" class="poll-card hidden"></div>
+
+  <div id="callPanel" class="call-panel hidden">
+    <div id="callHead" class="call-head"><i data-icon="video"></i><b>Video class</b><span id="callCount" class="call-count"></span><button id="callMin" class="icon-btn sm" title="Minimise"><i data-icon="chevD"></i></button></div>
+    <div id="callTiles" class="call-tiles"></div>
+    <div id="callHint" class="call-hint"></div>
+    <div class="call-bar">
+      <button id="cMic" class="cbtn" title="Microphone"><i data-icon="micOff"></i></button>
+      <button id="cCam" class="cbtn" title="Camera"><i data-icon="videoOff"></i></button>
+      <button id="cScr" class="cbtn hidden" title="Share your screen"><i data-icon="screen"></i></button>
+      <button id="cMuteAll" class="cbtn txt teacher-only hidden" title="Turn off every student's microphone">Mute all</button>
+      <button id="cCamsOff" class="cbtn txt teacher-only hidden" title="Turn off every student's camera">Cams off</button>
+      <button id="cLeave" class="cbtn leave" title="Leave the video class"><i data-icon="hangup"></i></button>
+    </div>
+  </div>
+
+  <div id="dock" class="dock">
+    <div id="colors" class="colors"></div>
+    <button class="custom-color" id="customColorBtn" title="Mix your own colour"><i id="customColor"></i></button>
+    <div class="size">
+      <span class="dot-preview"><i id="sizeDot"></i></span>
+      <input type="range" id="sizeRange" min="1" max="30" value="4" title="Brush / text size">
+    </div>
+    <button id="fontBtn" class="icon-btn txt" title="Text font: clean / handwriting">Aa</button>
+    <button id="fillBtn" data-lab="Fill" class="icon-btn" title="Fill shapes"><i data-icon="fill"></i></button>
+    <button id="dashBtn" data-lab="Dashed" class="icon-btn" title="Dashed lines"><i data-icon="dash"></i></button>
+    <button id="snapBtn" data-lab="Grid" class="icon-btn" title="Snap to grid"><i data-icon="snap"></i></button>
+    <button id="smartBtn" data-lab="Auto shape" class="icon-btn" title="Auto shape: rough circle, box, triangle or line turns perfect"><i data-icon="wand"></i></button>
+    <span class="vsep teacher-only"></span>
+    <button id="undoBtn" data-lab="Undo" class="icon-btn teacher-only" title="Undo (Ctrl+Z)"><i data-icon="undo"></i></button>
+    <button id="redoBtn" data-lab="Redo" class="icon-btn teacher-only" title="Redo (Ctrl+Y)"><i data-icon="redo"></i></button>
+    <button id="clearBtn" data-lab="Clear" class="icon-btn danger teacher-only" title="Clear page"><i data-icon="trash"></i></button>
+    <button id="bgBtn" class="btn soft teacher-only" title="Wallpaper"><i data-icon="image"></i><span>Wallpaper</span></button>
+  </div>
+
+  <div id="pager" class="pager">
+    <button id="prevPage" class="icon-btn teacher-only" title="Previous page"><i data-icon="chevL"></i></button>
+    <span id="pageNum">1 / 1</span>
+    <button id="nextPage" class="icon-btn teacher-only" title="Next page"><i data-icon="chevR"></i></button>
+    <button id="pagesBtn" class="icon-btn teacher-only" title="All pages"><i data-icon="grid"></i></button>
+    <button id="dupPage" class="icon-btn teacher-only" title="Copy this page (duplicate)"><i data-icon="copy"></i></button>
+    <button id="addPage" class="icon-btn add teacher-only" title="New page"><i data-icon="plus"></i></button>
+    <button id="delPage" class="icon-btn danger teacher-only" title="Delete this page"><i data-icon="trash"></i></button>
+  </div>
+
+  <aside id="people" class="people hidden">
+    <div class="people-head"><b>People</b><span id="peopleCount" class="muted"></span><button class="icon-btn sm" id="peopleClose" title="Close"><i data-icon="close"></i></button></div>
+    <div id="peopleList" class="people-list"></div>
+    <div class="people-foot teacher-only">
+      <button id="lowerAll" class="btn soft">Lower all hands</button>
+      <button id="pickBtn2" class="btn accent-soft"><i data-icon="dice"></i><span>Pick random</span></button>
+    </div>
+  </aside>
+
+  <div id="pPop" class="p-pop hidden"></div>
+  <div id="presentBar" class="present-bar">
+    <button id="pPrev" class="icon-btn teacher-only" data-lab="Back" title="Previous page"><i data-icon="chevL"></i></button>
+    <button id="pUndo" class="icon-btn teacher-only" data-lab="Undo" title="Undo (Ctrl+Z)"><i data-icon="undo"></i></button>
+    <button id="pRedo" class="icon-btn teacher-only" data-lab="Redo" title="Redo (Ctrl+Y)"><i data-icon="redo"></i></button>
+    <span class="vsep"></span>
+    <button class="icon-btn teacher-only" data-ptool="select" data-lab="Select" title="Select / move / resize"><i data-icon="select"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="lasso" data-lab="Lasso" title="Lasso: circle objects to select them"><i data-icon="lasso"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="pen" data-lab="Pencil" title="Pen"><i data-icon="pen"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="hl" data-lab="Marker" title="Highlighter"><i data-icon="hl"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="eraser" data-lab="Eraser" title="Eraser"><i data-icon="eraser"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="text" data-lab="Text" title="Type text"><i data-icon="text"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="laser" data-lab="Laser" title="Laser"><i data-icon="laser"></i></button>
+    <button class="icon-btn teacher-only" data-ptool="spot" data-lab="Spotlight" title="Spotlight"><i data-icon="spot"></i></button>
+    <button id="pThumbs" class="icon-btn teacher-only" data-lab="👍/👎" title="Quick thumbs up / down poll"><span style="font-size:18px">👍</span></button>
+    <button class="icon-btn teacher-only curtain-btn" data-lab="Curtain" title="Cover the board and reveal slowly"><i data-icon="curtain"></i></button>
+    <button id="pNext" class="icon-btn teacher-only" data-lab="Next" title="Next page"><i data-icon="chevR"></i></button>
+    <button id="pAdd" class="icon-btn teacher-only" data-lab="New page" title="Add a new page"><i data-icon="plus"></i></button>
+    <span id="pPageNum" class="p-num">1 / 1</span>
+    <button id="presentExit" class="btn primary">Exit</button>
+  </div>
+  <input type="file" id="imgInput" accept="image/*" hidden>
+  <input type="file" id="pdfInput" accept="application/pdf" hidden>
+</section>
+
+<!-- ================= MODALS ================= -->
+<div id="mConfirm" class="modal hidden"><div class="sheet sm">
+  <p id="confirmMsg" class="confirm-msg"></p>
+  <div class="row end"><button id="confirmNo" class="btn ghost">Cancel</button><button id="confirmYes" class="btn primary">Yes</button></div>
+</div></div>
+
+<div id="mPoll" class="modal hidden"><div class="sheet">
+  <div class="sheet-head"><h3>Quick poll</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <label class="field"><span>Question</span><input id="pollQ" class="input" maxlength="200" placeholder="e.g. Which is a prime number?" autocomplete="off"></label>
+  <div id="pollOpts" class="poll-opts"></div>
+  <p class="hint">Tick the circle next to the correct answer (optional). Students see the result after you close the poll.</p>
+  <div class="row end"><button class="btn ghost" data-close>Cancel</button><button id="pollGo" class="btn primary">Start poll</button></div>
+</div></div>
+
+<div id="mTimer" class="modal hidden"><div class="sheet sm">
+  <div class="sheet-head"><h3>Class timer</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <div id="timerPresets" class="presets"></div>
+  <label class="field"><span>Custom (minutes)</span><input id="timerMin" class="input" type="number" min="1" max="120" placeholder="e.g. 7"></label>
+  <div class="row end"><button class="btn ghost" data-close>Cancel</button><button id="timerGo" class="btn primary">Start</button></div>
+</div></div>
+
+<div id="mInvite" class="modal hidden"><div class="sheet invite">
+  <div class="sheet-head"><h3>Invite students</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <div class="invite-body">
+    <div id="qrBox" class="qr-box"></div>
+    <div class="invite-info">
+      <span class="muted">Room code</span>
+      <div id="bigCode" class="big-code">------</div>
+      <label class="field"><span>Join link (editable)</span><input id="joinUrl" class="input" spellcheck="false"></label>
+      <p id="urlHint" class="hint hidden"></p>
+      <div class="row"><button id="copyLink" class="btn primary"><i data-icon="copy"></i><span>Copy link</span></button><button id="copyCode" class="btn soft">Copy code</button></div>
+    </div>
+  </div>
+</div></div>
+
+<div id="mTemplates" class="modal hidden"><div class="sheet wide">
+  <div class="sheet-head"><h3>Templates</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <p class="hint">Adds the template to a fresh page (or this page if it is empty). You can move and resize everything with the Select tool.</p>
+  <div id="tplGrid" class="tpl-grid"></div>
+</div></div>
+
+<div id="mPick" class="modal hidden"><div class="sheet sm center">
+  <div class="muted">Your turn!</div>
+  <div id="pickName" class="pick-name">...</div>
+  <div class="row center"><button id="pickAgain" class="btn soft teacher-only"><i data-icon="dice"></i><span>Pick again</span></button><button class="btn primary" data-close>Done</button></div>
+</div></div>
+
+<div id="mColor" class="modal hidden"><div class="sheet sm cp">
+  <div class="sheet-head"><h3 id="cpTitle">Colour studio</h3><button class="icon-btn sm" id="cpX" title="Cancel"><i data-icon="close"></i></button></div>
+  <div class="cp-sv"><canvas id="cpSV" width="320" height="200"></canvas><i id="cpSVh" class="cp-knob"></i></div>
+  <input type="range" id="cpHue" class="cp-hue" min="0" max="360" step="1" value="0" aria-label="Hue">
+  <div class="cp-row">
+    <div class="cp-prev" title="Old | New"><i id="cpOld"></i><i id="cpNew"></i></div>
+    <label class="cp-hexwrap"><span>#</span><input id="cpHex" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off"></label>
+    <button class="icon-btn sm" id="cpEye" title="Pick from screen" hidden><i data-icon="eyedrop"></i></button>
+  </div>
+  <div class="cp-label">Shades</div>
+  <div id="cpShades" class="cp-strip"></div>
+  <div class="cp-label">Palette</div>
+  <div id="cpPal" class="cp-pal"></div>
+  <div class="cp-label" id="cpRecentL">Recent</div>
+  <div id="cpRecent" class="cp-strip"></div>
+  <div class="row end cp-actions"><button class="btn ghost" id="cpCancel">Cancel</button><button class="btn primary" id="cpDone">Use this colour</button></div>
+</div></div>
+<div id="mBg" class="modal hidden"><div class="sheet wide">
+  <div class="sheet-head"><h3>Wallpapers</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <div id="bgGallery"></div>
+</div></div>
+
+<div id="mPages" class="modal hidden"><div class="sheet wide">
+  <div class="sheet-head"><h3>All pages</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <div id="pageGrid" class="page-grid"></div>
+  <div class="row end"><button id="pgAdd" class="btn primary"><i data-icon="plus"></i><span>New page</span></button></div>
+</div></div>
+
+<div id="mGroups" class="modal hidden"><div class="sheet">
+  <div class="sheet-head"><h3>Make groups</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <div class="row" style="align-items:end"><label class="field" style="flex:1"><span>Number of groups</span><input id="groupN" class="input" type="number" min="2" max="10" value="4"></label><button id="groupGo" class="btn primary" style="margin-bottom:12px"><i data-icon="dice"></i><span>Shuffle</span></button></div>
+  <div id="groupOut" class="group-out"></div>
+  <div class="row end"><button id="groupPost" class="btn soft hidden">Add to board</button></div>
+</div></div>
+
+<div id="mHelp" class="modal hidden"><div class="sheet">
+  <div class="sheet-head"><h3>Keyboard shortcuts</h3><button class="icon-btn sm" data-close><i data-icon="close"></i></button></div>
+  <div class="keys">
+    <span><kbd>V</kbd> Select</span><span><kbd>Q</kbd> Circle select</span><span><kbd>P</kbd> Pen</span><span><kbd>H</kbd> Highlighter</span><span><kbd>E</kbd> Eraser</span>
+    <span><kbd>L</kbd> Line</span><span><kbd>A</kbd> Arrow</span><span><kbd>R</kbd> Rectangle</span><span><kbd>O</kbd> Circle</span>
+    <span><kbd>S</kbd> Shapes</span><span><kbd>T</kbd> Text</span><span><kbd>N</kbd> Sticky note</span><span><kbd>K</kbd> Laser</span>
+    <span><kbd>J</kbd> Spotlight</span><span><kbd>F</kbd> Present mode</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span><span><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</span>
+    <span><kbd>Ctrl</kbd>+<kbd>D</kbd> Duplicate</span><span><kbd>Del</kbd> Delete selected</span><span><kbd>←</kbd> <kbd>→</kbd> Change page</span><span><kbd>?</kbd> This help</span>
+  </div>
+</div></div>
+
+<div id="toasts"></div>
+
+<script src="/config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/call.js"></script>
+<script src="js/features.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/extras2.js"></script>
+<script src="js/extras3.js"></script>
+<script src="js/extras4.js"></script>
+<script src="js/account.js"></script>
+</body>
+</html>
