@@ -854,3 +854,12 @@ html, body { overflow-x: hidden; }
   .chat-panel .chat-head { padding: 8px 10px 4px 12px; }
   .chat-foot { padding: 6px 8px; }
 }
+/* chat icon: badge sits on the chat icon + keeps blinking until chat is opened */
+#chatBtn { position: relative; }
+@keyframes chatBlink { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.75); transform: scale(1); } 50% { box-shadow: 0 0 0 9px rgba(239,68,68,0); transform: scale(1.12); } }
+#chatBtn.has-new { animation: chatBlink 1s ease-in-out infinite; background: color-mix(in srgb, #ef4444 28%, var(--raised)); }
+#chatDot { z-index: 3; animation: chatBlink 1s ease-in-out infinite; }
+/* student phone: keep the video-class button visible on the top bar */
+@media (max-width: 920px) { #app:not(.is-teacher) #callBtn { display: grid !important; } }
+@media (max-width: 400px) { #app:not(.is-teacher) .tb-right { gap: 3px; } #app:not(.is-teacher) .tb-right .icon-btn { width: 34px; } #app:not(.is-teacher) .tb-right #confBtn { padding: 0 8px; } }
+@media (max-width: 920px) { #app:not(.is-teacher) #confBtn { flex: none; width: 38px; height: 38px; padding: 0; display: grid; place-items: center; border-radius: 12px; } }
