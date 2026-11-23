@@ -204,7 +204,7 @@
           owner: typeof d.owner === 'string' ? d.owner.slice(0, 64) : null,
         };
         rooms.set(r.code, r);
-        enter(cid, r, 'teacher', 'Teacher');
+        enter(cid, r, 'teacher', clean(d.tname, 24) || 'Teacher');
         changed();
         return ack({ ok: true, code: r.code, key: r.key, role: 'teacher', state: stateOf(r, cid) });
       }
@@ -214,7 +214,7 @@
         if (!r) return ack({ ok: false, error: 'Room code not found. Please check the code and try again.' });
         const teacher = !!d.key && d.key === r.key;
         if (!teacher && !clean(d.name, 24)) return ack({ ok: false, error: 'Please enter your name to join.' });
-        enter(cid, r, teacher ? 'teacher' : 'student', teacher ? 'Teacher' : clean(d.name, 24) || 'Student');
+        enter(cid, r, teacher ? 'teacher' : 'student', teacher ? (clean(d.tname, 24) || 'Teacher') : clean(d.name, 24) || 'Student');
         return ack({ ok: true, code: r.code, role: teacher ? 'teacher' : 'student', state: stateOf(r, cid) });
       }
 
@@ -544,14 +544,24 @@
         // ----- chat + "I don't understand" -----
         case 'chat:send': {
           const text = clean(d.text, 300);
-          if (!text || (!isT && r.chatOn === false)) return;
+          const img = typeof d.img === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(d.img) && d.img.length <= 420000 ? d.img : null;
+          if ((!text && !img) || (!isT && r.chatOn === false)) return;
           const t = now();
-          if (c.lastChat && t - c.lastChat < 400) return;
+          if (c.lastChat && t - c.lastChat < (img ? 1500 : 400)) return;
           c.lastChat = t;
           r.chat = r.chat || [];
           const msg = { id: rid(), name: c.name, role: c.role, text, t };
+          if (img) msg.img = img;
           r.chat.push(msg); if (r.chat.length > 100) r.chat.shift();
+          // keep the room small: only the newest ~3 MB of chat photos are kept
+          let bytes = 0;
+          for (let i = r.chat.length - 1; i >= 0; i--) { const m = r.chat[i]; if (m.img) { bytes += m.img.length; if (bytes > 3e6) { delete m.img; m.imgGone = true; } } }
           all('chat:msg', msg); break;
+        }
+        case 'name:set': {
+          if (!isT) return;
+          c.name = clean(d.name, 24) || 'Teacher';
+          all('teacher:name', { name: c.name }); pushPeople(r); break;
         }
         case 'chat:on': {
           if (!isT) return;

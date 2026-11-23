@@ -286,7 +286,7 @@
     { id: 'mint', name: 'Mint', meta: '#e8f5ef' },
     { id: 'chalk', name: 'Blackboard', meta: '#1d3a2f' },
   ];
-  const FEATURE_EVENTS = ['react', 'poll:state', 'timer:state', 'people', 'hand:raised', 'hand:state', 'picked', 'room:title', 'call:state', 'rtc:joined', 'rtc:left', 'rtc:sig', 'rtc:ctl', 'ov:set', 'ask:state', 'break:state', 'chat:msg', 'chat:on', 'chat:clear', 'confuse:state', 'confuse:mine', 'cheer', 'lb:state'];
+  const FEATURE_EVENTS = ['react', 'poll:state', 'timer:state', 'people', 'hand:raised', 'hand:state', 'picked', 'room:title', 'call:state', 'rtc:joined', 'rtc:left', 'rtc:sig', 'rtc:ctl', 'ov:set', 'ask:state', 'break:state', 'chat:msg', 'teacher:name', 'chat:on', 'chat:clear', 'confuse:state', 'confuse:mine', 'cheer', 'lb:state'];
 
   const ICONS = {
     stretch: '<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M3 5v14M21 5v14"/>',
@@ -1054,7 +1054,7 @@
     s.on('connect', () => {
       S.ready = true; fire('server', true); toastDone('net');
       if (S.joined && S.code) {
-        s.emit('room:join', { code: S.code, key: keyFor(S.code), name: S.name }, (res) => {
+        s.emit('room:join', { code: S.code, key: keyFor(S.code), name: S.name, tname: store.get('sb_tname', '') || undefined }, (res) => {
           if (res && res.ok) { S.role = res.role; applyState(res.state); updateUI(); toast('Reconnected ✅'); }
           else { toast('This room has ended.'); leaveRoom(); }
         });
@@ -1184,8 +1184,9 @@
   function createBoard() {
     if (!navigator.onLine || !connect()) return toast('You are offline. Connect to the internet to create a board.');
     const title = $('#titleInput').value.trim();
+    store.set('sb_tname', $('#teacherName').value.trim().slice(0, 24));
     const cb = $('#createBtn'); const ct = cb.textContent; cb.disabled = true; cb.textContent = S.ready ? 'Creating…' : 'Waking server…';
-    S.socket.timeout(S.ready ? 10000 : 70000).emit('room:create', { title, token: store.get('sb_token', '') || undefined }, (timedOut, res) => {
+    S.socket.timeout(S.ready ? 10000 : 70000).emit('room:create', { title, tname: $('#teacherName').value.trim().slice(0, 24) || undefined, token: store.get('sb_token', '') || undefined }, (timedOut, res) => {
       cb.disabled = false; cb.textContent = ct;
       if (timedOut || !res || !res.ok) return toast('Could not create the board, please try again.');
       saveKey(res.code, res.key);
@@ -1206,7 +1207,7 @@
     store.set('sb_name', S.name);
     const jb = $('#joinBtn'); const jt = jb.textContent; jb.disabled = true; jb.textContent = S.ready ? 'Joining…' : 'Waking server…';
     const done = () => { jb.disabled = false; jb.textContent = jt; };
-    S.socket.timeout(S.ready ? 10000 : 70000).emit('room:join', { code, key: keyFor(code), name: S.name }, (timedOut, res) => {
+    S.socket.timeout(S.ready ? 10000 : 70000).emit('room:join', { code, key: keyFor(code), name: S.name, tname: store.get('sb_tname', '') || undefined }, (timedOut, res) => {
       done();
       if (timedOut) { err.textContent = 'Server is not responding. Please try again.'; return; }
       if (!res || !res.ok) { err.textContent = (res && res.error) || 'Could not join.'; return; }
@@ -2305,6 +2306,7 @@
 
     // landing
     $('#nameInput').value = store.get('sb_name', '');
+    $('#teacherName').value = store.get('sb_tname', '');
     $('#nameInput').addEventListener('input', () => { $('#nameInput').classList.remove('bad'); $('#joinErr').textContent = ''; });
     warmUp();
     $('#createBtn').onclick = createBoard;

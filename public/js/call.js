@@ -121,7 +121,7 @@
     const init = amT && (info.role !== 'teacher' || st.me < info.id);
     const pc = new RTCPeerConnection(ICE);
     const e = { id: info.id, role: info.role, name: info.name || '', pc, init, ice: [], remote: { mic: false, cam: false, scr: false }, stream: new MediaStream(), aS: null, vS: null, tile: null, ctx: null };
-    e.tile = makeTile(info.role === 'teacher' ? 'Teacher' : (info.name || 'Student'), false, info.id);
+    e.tile = makeTile(info.role === 'teacher' ? (info.name && info.name !== 'Teacher' ? info.name + ' (Teacher)' : 'Teacher') : (info.name || 'Student'), false, info.id);
     if (info.role === 'teacher') e.tile.t.classList.add('teacher');
     renderRemote(e);
     st.peers.set(info.id, e);

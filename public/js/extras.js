@@ -4,7 +4,7 @@
 (() => {
   'use strict';
   const SB = window.SB;
-  const { S, $, $$, toast, emit, hook, openModal, closeModal } = SB;
+  const { S, $, $$, toast, emit, hook, openModal, closeModal, store } = SB;
 
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const icon = (name) => { const i = el('i'); i.dataset.icon = name; i.innerHTML = SB.svgOf(name); return i; };
@@ -474,18 +474,57 @@
     if (!chatList) return;
     const e = chatList.querySelector('.chat-empty'); if (e) e.remove();
     const d = el('div', 'msg ' + (m.role === 'teacher' ? 't' : '') + (m.name === S.name && !isT() || (isT() && m.role === 'teacher') ? ' me' : ''));
-    d.append(el('small', null, m.role === 'teacher' ? 'Teacher' : m.name), document.createTextNode(m.text));
+    const who = el('small', null, m.role === 'teacher' ? (m.name || 'Teacher') : m.name);
+    if (m.role === 'teacher') who.append(el('span', 'tbadge', 'TEACHER'));
+    d.append(who);
+    if (m.img) {
+      const im = el('img', 'chat-img'); im.src = m.img; im.alt = 'photo'; im.loading = 'lazy';
+      im.onclick = () => openPhoto(m.img, m.name);
+      d.append(im);
+    } else if (m.imgGone) d.append(el('div', 'chat-gone', '📷 Photo removed to save space'));
+    if (m.text) d.append(el('div', 'msg-text', m.text));
     chatList.append(d); chatList.scrollTop = chatList.scrollHeight;
     const mine = m.name === S.name && !isT() || (isT() && m.role === 'teacher');
     if (!silent && !mine && chatPanel.classList.contains('hidden')) {
       unread++; const dot = $('#chatDot'); dot.textContent = unread > 9 ? '9+' : String(unread); dot.classList.remove('hidden');
       $('#chatBtn').classList.add('has-new');
-      toast((m.role === 'teacher' ? 'Teacher' : m.name) + ': ' + (m.text.length > 50 ? m.text.slice(0, 50) + '…' : m.text), { id: 'chatnew', ms: 2200 });
+      const tx = m.text || '📷 Photo'; toast((m.role === 'teacher' ? (m.name || 'Teacher') + ' (Teacher)' : m.name) + ': ' + (tx.length > 50 ? tx.slice(0, 50) + '…' : tx), { id: 'chatnew', ms: 2200 });
     }
+  }
+  // ---- photo in chat ----
+  function openPhoto(src, who) {
+    let o = document.getElementById('photoView');
+    if (!o) { o = el('div', 'photo-view hidden'); o.id = 'photoView'; const im = el('img'); const cap = el('div', 'photo-cap'); const x = el('button', 'icon-btn'); x.append(icon('close')); o.append(im, cap, x); o.onclick = () => o.classList.add('hidden'); document.body.append(o); }
+    o.querySelector('img').src = src; o.querySelector('.photo-cap').textContent = who ? 'Photo from ' + who : ''; o.classList.remove('hidden');
+  }
+  function shrinkPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file); const im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(url);
+        let max = 1100, q = 0.82, out = '';
+        for (let tries = 0; tries < 6; tries++) {
+          const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+          const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+          const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+          out = c.toDataURL('image/jpeg', q);
+          if (out.length <= 400000) return resolve(out);
+          max = Math.round(max * 0.8); q = Math.max(0.55, q - 0.07);
+        }
+        reject(new Error('too big'));
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+      im.src = url;
+    });
   }
   function buildChat() {
     chatPanel = el('div', 'chat-panel hidden'); chatPanel.id = 'chatPanel';
     const head = el('div', 'chat-head'); head.append(el('b', null, 'Class chat'));
+    const nm = el('label', 'chat-name teacher-only'); nm.append(document.createTextNode('Shown as '));
+    const ni = el('input', 'input'); ni.id = 'chatName'; ni.maxLength = 24; ni.placeholder = 'Teacher'; ni.value = store.get('sb_tname', '') || '';
+    ni.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') ni.blur(); });
+    ni.onchange = () => { const v = ni.value.trim().slice(0, 24); try { localStorage.setItem('sb_tname', v); } catch (e) { /* ignore */ } emit('name:set', { name: v }); toast('Students will now see you as ' + (v || 'Teacher')); };
+    nm.append(ni);
     if (true) {
       const lab = el('label'); lab.className = 'teacher-only'; const cb = el('input'); cb.type = 'checkbox'; cb.id = 'chatOnCb'; cb.checked = true;
       cb.onchange = () => emit('chat:on', { on: cb.checked });
@@ -497,8 +536,18 @@
     const foot = el('div', 'chat-foot'); const inp = el('input', 'input'); inp.placeholder = 'Type a message…'; inp.maxLength = 300; inp.id = 'chatInput';
     const send = () => { const v = inp.value.trim(); if (v) { emit('chat:send', { text: v }); inp.value = ''; } };
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); e.stopPropagation(); });
-    const sb = btn('Send', 'primary', send); foot.append(inp, sb);
-    chatPanel.append(head, chatList, foot); $('#app').append(chatPanel);
+    const sb = btn('Send', 'primary', send);
+    const pic = el('button', 'icon-btn sm chat-pic'); pic.title = 'Send a photo'; pic.id = 'chatPic'; pic.append(icon('image'));
+    const file = el('input'); file.type = 'file'; file.accept = 'image/*'; file.hidden = true; file.id = 'chatFile';
+    pic.onclick = () => file.click();
+    file.onchange = async () => {
+      const f = file.files && file.files[0]; file.value = ''; if (!f) return;
+      if (!/^image\//.test(f.type)) return toast('Please choose a photo.');
+      try { toast('Sending photo…', { id: 'chatpic', ms: 1500 }); const img = await shrinkPhoto(f); emit('chat:send', { text: inp.value.trim(), img }); inp.value = ''; }
+      catch (e) { toast('Could not send that photo. Try a smaller one.'); }
+    };
+    foot.append(pic, file, inp, sb);
+    chatPanel.append(head, nm, chatList, foot); $('#app').append(chatPanel);
     $('#chatBtn').onclick = () => { chatPanel.classList.toggle('hidden'); if (!chatPanel.classList.contains('hidden')) { unread = 0; $('#chatDot').classList.add('hidden'); $('#chatBtn').classList.remove('has-new'); chatList.scrollTop = chatList.scrollHeight; setTimeout(() => inp.focus(), 40); } };
   }
   function setChatOn(on) {
