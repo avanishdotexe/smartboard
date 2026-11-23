@@ -87,3 +87,25 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+
+/* tap the board (student, rotated phone) to show / hide the controls */
+(() => {
+  const mq = window.matchMedia('(orientation: landscape) and (max-height: 520px)');
+  let t = null, down = null;
+  const app = () => document.getElementById('app');
+  const hide = () => { const a = app(); if (a) a.classList.remove('ui-on'); };
+  const show = () => { const a = app(); if (!a) return; a.classList.add('ui-on'); clearTimeout(t); t = setTimeout(hide, 5000); };
+  function init() {
+    const area = document.getElementById('stageArea'); if (!area) return;
+    area.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+    area.addEventListener('pointerup', (e) => {
+      const a = app(); if (!down || !a || !mq.matches || !a.classList.contains('viewer') || a.classList.contains('is-teacher')) { down = null; return; }
+      const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10, quick = Date.now() - down.t < 450; down = null;
+      if (moved || !quick) return;
+      if (a.classList.contains('ui-on')) { clearTimeout(t); hide(); } else show();
+    });
+    document.getElementById('app').addEventListener('click', (e) => { if (app().classList.contains('ui-on') && e.target.closest('.topbar,.pager,.zoom-bar')) show(); });
+    mq.addEventListener && mq.addEventListener('change', hide);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
