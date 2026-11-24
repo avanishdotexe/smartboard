@@ -2003,16 +2003,11 @@
       if (document.readyState === 'complete') reg(); else window.addEventListener('load', reg);
     }
     if (btn) {
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        if (!isStandalone()) btn.classList.remove('hidden');
-      });
+      const showBtn = () => { if (window.SBInstall && SBInstall.can()) btn.classList.remove('hidden'); };
+      window.addEventListener('beforeinstallprompt', () => setTimeout(showBtn, 0));
+      showBtn();
       btn.onclick = async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
+        if (window.SBInstall && SBInstall.can()) { await SBInstall.prompt(); }
         btn.classList.add('hidden');
       };
       window.addEventListener('appinstalled', () => { btn.classList.add('hidden'); toast('SmartBoard installed 🎉'); });
