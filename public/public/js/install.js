@@ -50,3 +50,10 @@
   window.addEventListener('appinstalled', () => { set(KEY, String(Date.now() + 3650 * 86400000)); if (card) { card.remove(); back && back.remove(); card = back = null; } });
   if (ios && !standalone()) { const go = () => setTimeout(() => build(true), 1200); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 })();
+
+/* when a new version of the app takes over, reload once so the user sees it right away */
+(() => {
+  if (!('serviceWorker' in navigator)) return;
+  const had = !!navigator.serviceWorker.controller; let done = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || done) return; done = true; location.reload(); });
+})();
