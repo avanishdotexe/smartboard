@@ -847,3 +847,59 @@ html, body { overflow-x: hidden; }
 /* "more options" corner mark on marker + eraser (same as pencil) */
 .tool[data-tool="hl"]::after, .tool[data-tool="eraser"]::after { content: ''; position: absolute; right: 6px; bottom: 6px; border: 3px solid transparent; border-top-color: currentColor; border-right-color: currentColor; opacity: .55; }
 .toolbar .tool[data-tool="hl"]::after, .toolbar .tool[data-tool="eraser"]::after { z-index: 2; right: 9px; bottom: 15px; }
+/* phone: chat takes bottom 36%, board stays visible above it */
+@media (max-width: 760px) {
+  .chat-panel { height: 36vh; max-height: 36vh; }
+  #app:has(.chat-panel:not(.hidden)) .stage-area { bottom: calc(36vh + 78px + var(--sb)); }
+  .chat-panel .chat-head { padding: 8px 10px 4px 12px; }
+  .chat-foot { padding: 6px 8px; }
+}
+/* chat icon: badge sits on the chat icon + keeps blinking until chat is opened */
+#chatBtn { position: relative; }
+@keyframes chatBlink { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.75); transform: scale(1); } 50% { box-shadow: 0 0 0 9px rgba(239,68,68,0); transform: scale(1.12); } }
+#chatBtn.has-new { animation: chatBlink 1s ease-in-out infinite; background: color-mix(in srgb, #ef4444 28%, var(--raised)); }
+#chatDot { z-index: 3; animation: chatBlink 1s ease-in-out infinite; }
+/* student phone: keep the video-class button visible on the top bar */
+@media (max-width: 920px) { #app:not(.is-teacher) #callBtn { display: grid !important; } }
+@media (max-width: 400px) { #app:not(.is-teacher) .tb-right { gap: 3px; } #app:not(.is-teacher) .tb-right .icon-btn { width: 34px; } #app:not(.is-teacher) .tb-right #confBtn { padding: 0 8px; } }
+@media (max-width: 920px) { #app:not(.is-teacher) #confBtn { flex: none; width: 38px; height: 38px; padding: 0; display: grid; place-items: center; border-radius: 12px; } }
+/* phone rotated (landscape): student sees the board edge-to-edge, tap board to show / hide the controls */
+@media (orientation: landscape) and (max-height: 520px) {
+  #app.viewer:not(.is-teacher) .stage-area { left: max(6px, env(safe-area-inset-left, 0px)); right: max(6px, env(safe-area-inset-right, 0px)); top: 6px; bottom: 6px; }
+  #app.viewer:not(.is-teacher) .topbar, #app.viewer:not(.is-teacher) .pager, #app.viewer:not(.is-teacher) .zoom-bar { opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #app.viewer:not(.is-teacher).ui-on .topbar, #app.viewer:not(.is-teacher).ui-on .pager, #app.viewer:not(.is-teacher).ui-on .zoom-bar { opacity: 1; pointer-events: auto; }
+  #app.viewer:not(.is-teacher) .topbar { z-index: 30; }
+  #app.viewer:not(.is-teacher) .zoom-bar { top: 62px; }
+}
+/* delete-confirm must sit above the "My boards" window */
+#mConfirm { z-index: 500; }
+/* chat photo viewer with zoom */
+.photo-view { padding: 0; display: block; touch-action: none; }
+.photo-view .pv-stage { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; touch-action: none; }
+.photo-view img { max-width: 96vw; max-height: 82vh; transform-origin: center; will-change: transform; user-select: none; -webkit-user-drag: none; }
+.photo-view .pv-close { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; z-index: 3; width: 42px; height: 42px; background: rgba(255,255,255,.16); color: #fff; border-radius: 50%; }
+.photo-view .photo-cap { bottom: auto; top: calc(22px + env(safe-area-inset-top, 0px)); pointer-events: none; }
+.photo-view .pv-zoom { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 3; display: flex; align-items: center; gap: 4px; padding: 5px 8px; border-radius: 99px; background: rgba(20,24,32,.82); backdrop-filter: blur(8px); }
+.photo-view .pv-zoom .icon-btn { position: static; width: 40px; height: 40px; border-radius: 50%; color: #fff; font-size: 22px; font-weight: 700; background: rgba(255,255,255,.12); }
+.photo-view .pv-lab { min-width: 52px; text-align: center; color: #fff; font-weight: 700; font-size: 13px; }
+
+/* top bar buttons: coloured, rounded, friendlier (tool dock + brushes stay as they were) */
+.topbar .icon-btn, .topbar #confBtn { --c: var(--accent); border-radius: 14px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--raised)); border: 1px solid color-mix(in srgb, var(--c) 32%, transparent); box-shadow: 0 2px 8px color-mix(in srgb, var(--c) 18%, transparent); transition: transform .15s, box-shadow .15s, background .15s; }
+.topbar .icon-btn:hover, .topbar #confBtn:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--c) 24%, var(--raised)); box-shadow: 0 6px 16px color-mix(in srgb, var(--c) 32%, transparent); }
+.topbar .icon-btn:active { transform: scale(.94); }
+.topbar #handBtn { --c: #f59e0b; } .topbar #confBtn { --c: #8b5cf6; } .topbar #chatBtn { --c: #3b82f6; } .topbar #reactBtn { --c: #eab308; }
+.topbar #callBtn { --c: #10b981; } .topbar #presentBtn { --c: #a855f7; } .topbar #themeBtn { --c: #ec4899; } .topbar #fsBtn { --c: #06b6d4; }
+.topbar #moreBtn { --c: #64748b; } .topbar #leaveBtn { --c: #ef4444; }
+.topbar #chatBtn.has-new { background: color-mix(in srgb, #ef4444 28%, var(--raised)); }
+/* student: see-through chat so the board stays visible behind it */
+#app:not(.is-teacher) .chat-panel { background: color-mix(in srgb, var(--surface-solid) 58%, transparent); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+#app:not(.is-teacher) .chat-panel .msg { background: color-mix(in srgb, var(--raised) 70%, transparent); }
+#app:not(.is-teacher) .chat-panel .chat-foot, #app:not(.is-teacher) .chat-panel .chat-name { background: transparent; }
+@media (orientation: landscape) and (max-height: 520px) {
+  #app:not(.is-teacher) .chat-panel { left: auto; right: max(8px, env(safe-area-inset-right, 0px)); top: 8px; bottom: 8px; width: min(340px, 42vw); height: auto; max-height: none; }
+  #app.viewer:not(.is-teacher):has(.chat-panel:not(.hidden)) .stage-area { right: min(352px, 44vw); bottom: 6px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  #app.viewer:not(.is-teacher):has(.chat-panel:not(.hidden)) .topbar, #app.viewer:not(.is-teacher):has(.chat-panel:not(.hidden)) .pager, #app.viewer:not(.is-teacher):has(.chat-panel:not(.hidden)) .zoom-bar { opacity: 0 !important; pointer-events: none !important; }
+  #app:not(.is-teacher) .chat-panel { z-index: 40; }
+}
