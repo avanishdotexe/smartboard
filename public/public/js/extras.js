@@ -494,8 +494,42 @@
   // ---- photo in chat ----
   function openPhoto(src, who) {
     let o = document.getElementById('photoView');
-    if (!o) { o = el('div', 'photo-view hidden'); o.id = 'photoView'; const im = el('img'); const cap = el('div', 'photo-cap'); const x = el('button', 'icon-btn'); x.append(icon('close')); o.append(im, cap, x); o.onclick = () => o.classList.add('hidden'); document.body.append(o); }
-    o.querySelector('img').src = src; o.querySelector('.photo-cap').textContent = who ? 'Photo from ' + who : ''; o.classList.remove('hidden');
+    if (!o) {
+      o = el('div', 'photo-view hidden'); o.id = 'photoView';
+      const stage = el('div', 'pv-stage'); const im = el('img'); im.draggable = false; stage.append(im);
+      const cap = el('div', 'photo-cap');
+      const x = el('button', 'icon-btn pv-close'); x.title = 'Close'; x.append(icon('close'));
+      const bar = el('div', 'pv-zoom');
+      const mk = (txt, title) => { const b = el('button', 'icon-btn'); b.textContent = txt; b.title = title; return b; };
+      const bm = mk('−', 'Zoom out'), bp = mk('+', 'Zoom in'), br = mk('⤢', 'Fit'), lab = el('span', 'pv-lab', '100%');
+      bar.append(bm, lab, bp, br);
+      o.append(stage, cap, bar, x); document.body.append(o);
+      const st = { k: 1, x: 0, y: 0 };
+      const apply = () => { im.style.transform = `translate(${st.x}px,${st.y}px) scale(${st.k})`; lab.textContent = Math.round(st.k * 100) + '%'; };
+      const zoomTo = (k, cx = 0, cy = 0) => { k = Math.max(1, Math.min(6, k)); const r = k / st.k; st.x = (st.x - cx) * r + cx; st.y = (st.y - cy) * r + cy; st.k = k; if (k === 1) { st.x = 0; st.y = 0; } apply(); };
+      const centre = (e) => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2]; };
+      o._reset = () => { st.k = 1; st.x = 0; st.y = 0; apply(); };
+      bp.onclick = (e) => { e.stopPropagation(); zoomTo(st.k * 1.5); };
+      bm.onclick = (e) => { e.stopPropagation(); zoomTo(st.k / 1.5); };
+      br.onclick = (e) => { e.stopPropagation(); o._reset(); };
+      x.onclick = (e) => { e.stopPropagation(); o.classList.add('hidden'); };
+      bar.onclick = (e) => e.stopPropagation();
+      stage.addEventListener('wheel', (e) => { e.preventDefault(); const [cx, cy] = centre(e); zoomTo(st.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15), cx, cy); }, { passive: false });
+      stage.addEventListener('dblclick', (e) => { const [cx, cy] = centre(e); if (st.k > 1) o._reset(); else zoomTo(2.5, cx, cy); });
+      // pointers: one finger = drag, two fingers = pinch
+      const pts = new Map(); let last = null, moved = 0, startD = 0, startK = 1;
+      stage.addEventListener('pointerdown', (e) => { stage.setPointerCapture && stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; last = [e.clientX, e.clientY]; if (pts.size === 2) { const [a, b2] = [...pts.values()]; startD = Math.hypot(a[0] - b2[0], a[1] - b2[1]); startK = st.k; } });
+      stage.addEventListener('pointermove', (e) => {
+        if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+        if (pts.size === 2) { const [a, b2] = [...pts.values()]; const d = Math.hypot(a[0] - b2[0], a[1] - b2[1]); if (startD) zoomTo(startK * d / startD); moved = 99; }
+        else if (st.k > 1 && last) { st.x += e.clientX - last[0]; st.y += e.clientY - last[1]; moved += Math.abs(e.clientX - last[0]) + Math.abs(e.clientY - last[1]); apply(); }
+        last = [e.clientX, e.clientY];
+      });
+      const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) startD = 0; if (!pts.size && moved < 6 && st.k === 1 && e.target === stage) o.classList.add('hidden'); };
+      stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+      o.onclick = (e) => { if (e.target === o) o.classList.add('hidden'); };
+    }
+    o._reset(); o.querySelector('img').src = src; o.querySelector('.photo-cap').textContent = who ? 'Photo from ' + who : ''; o.classList.remove('hidden');
   }
   function shrinkPhoto(file) {
     return new Promise((resolve, reject) => {
