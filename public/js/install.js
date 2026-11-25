@@ -50,3 +50,35 @@
   window.addEventListener('appinstalled', () => { set(KEY, String(Date.now() + 3650 * 86400000)); if (card) { card.remove(); back && back.remove(); card = back = null; } });
   if (ios && !standalone()) { const go = () => setTimeout(() => build(true), 1200); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 })();
+
+/* when a new version of the app takes over, reload once so the user sees it right away */
+(() => {
+  if (!('serviceWorker' in navigator)) return;
+  const had = !!navigator.serviceWorker.controller; let done = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had || done) return; done = true; location.reload(); });
+})();
+
+/* auto-update: ask the server for its build id; if it changed (new deploy), refresh by itself */
+(() => {
+  let cur = null, shown = false;
+  const get = async () => { try { const r = await fetch('/api/version', { cache: 'no-store' }); return (await r.json()).v; } catch (e) { return null; } };
+  const refresh = async () => {
+    try { const k = await caches.keys(); await Promise.all(k.map((x) => caches.delete(x))); } catch (e) {}
+    try { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map((r) => r.update())); } catch (e) {}
+    location.reload();
+  };
+  const banner = () => {
+    if (shown) return; shown = true;
+    const b = document.createElement('div');
+    b.style.cssText = 'position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:700;display:flex;gap:10px;align-items:center;padding:10px 12px 10px 16px;border-radius:99px;background:#16a34a;color:#fff;font:700 14px system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)';
+    b.innerHTML = '<span>New version ready</span><button style="border:0;border-radius:99px;padding:7px 14px;font-weight:800;background:#fff;color:#166534;cursor:pointer">Update</button>';
+    b.querySelector('button').onclick = refresh; document.body.appendChild(b);
+  };
+  const check = async () => {
+    const v = await get(); if (!cur) { cur = v; return; } if (!v || v === cur) return;
+    const onLanding = !!document.querySelector('#landing.active');
+    if (onLanding) refresh(); else banner();   // never interrupt a running class
+  };
+  const start = () => { check(); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); setInterval(check, 3 * 60 * 1000); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
