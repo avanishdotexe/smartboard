@@ -16,10 +16,23 @@ const io = new Server(server, {
   cors: { origin: '*' },
 });
 
+// Build id of the files in /public. It changes on every deploy; the page asks for it and reloads itself when it changes.
+const BUILD_ID = (() => {
+  const fs = require('fs'), crypto = require('crypto'), h = crypto.createHash('sha1');
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
+    const f = path.join(d, e.name);
+    if (e.isDirectory()) return walk(f);
+    h.update(f.replace(__dirname, '') + fs.statSync(f).size + fs.readFileSync(f));
+  });
+  try { walk(path.join(__dirname, 'public')); } catch (e) { h.update(String(Date.now())); }
+  return h.digest('hex').slice(0, 10);
+})();
+app.get('/api/version', (_req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ v: BUILD_ID }); });
+
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, file) => {
-    // The service worker file must never be cached by the browser, so updates are picked up.
-    if (file.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache');
+    // App files are always re-checked with the server, so a new deploy reaches users at once (unchanged files still answer 304, which is cheap).
+    if (/\.(html|js|css|webmanifest|json)$/.test(file)) res.setHeader('Cache-Control', 'no-cache');
   },
 }));
 app.get('/health', (_req, res) => res.send('ok'));
