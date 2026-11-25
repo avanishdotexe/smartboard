@@ -3,7 +3,7 @@
  * - Live drawing always needs the internet: socket traffic is never intercepted or cached.
  * - Bump VERSION when you change any file in SHELL so users get the update.
  */
-const VERSION = 'smartboard-v38';
+const VERSION = 'smartboard-v39';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -115,4 +115,3 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(staleWhileRevalidate(req, RUNTIME_CACHE));
   }
 });
-
