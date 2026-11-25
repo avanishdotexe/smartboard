@@ -869,7 +869,7 @@ html, body { overflow-x: hidden; }
   #app.viewer:not(.is-teacher) .topbar, #app.viewer:not(.is-teacher) .pager, #app.viewer:not(.is-teacher) .zoom-bar { opacity: 0; pointer-events: none; transition: opacity .2s; }
   #app.viewer:not(.is-teacher).ui-on .topbar, #app.viewer:not(.is-teacher).ui-on .pager, #app.viewer:not(.is-teacher).ui-on .zoom-bar { opacity: 1; pointer-events: auto; }
   #app.viewer:not(.is-teacher) .topbar { z-index: 30; }
-  #app.viewer:not(.is-teacher) .zoom-bar { top: 62px; }
+  #app.viewer:not(.is-teacher) .zoom-bar { top: 62px; bottom: auto; height: auto; }
 }
 /* delete-confirm must sit above the "My boards" window */
 #mConfirm { z-index: 500; }
@@ -918,3 +918,12 @@ html, body { overflow-x: hidden; }
 .topbar #handBtn { --c: #f59e0b; color: #fff; border: 0; border-radius: 15px; background: linear-gradient(145deg, #fbbf24, #ea7a0c); box-shadow: 0 6px 16px rgba(245,158,11,.45), inset 0 1px 0 rgba(255,255,255,.35); font-weight: 800; }
 .topbar #handBtn.on, .topbar #handBtn.active { background: linear-gradient(145deg, #34d399, #059669); }
 .topbar #peopleBtn { border-radius: 15px; background: linear-gradient(145deg, color-mix(in srgb, #06b6d4 100%, #fff 18%), color-mix(in srgb, #06b6d4 80%, #000)); color: #fff; border: 0; box-shadow: 0 6px 16px rgba(6,182,212,.4), inset 0 1px 0 rgba(255,255,255,.35); }
+/* student on a wide landscape phone: compact top bar so nothing overlaps */
+@media (orientation: landscape) and (max-height: 520px) {
+  #app:not(.is-teacher) .topbar .title-input, #app:not(.is-teacher) #roleBadge { display: none; }
+  #app:not(.is-teacher) .topbar .btn span:not(.dot) { display: none; }
+  #app:not(.is-teacher) .topbar .btn { padding-left: 12px; padding-right: 12px; }
+  #app:not(.is-teacher) .topbar { gap: 8px; }
+}
+.ver-tag { position: fixed; left: 0; right: 0; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .06em; opacity: .45; pointer-events: none; }
+#landing:not(.active) .ver-tag { display: none; }
