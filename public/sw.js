@@ -3,7 +3,7 @@
  * - Live drawing always needs the internet: socket traffic is never intercepted or cached.
  * - Bump VERSION when you change any file in SHELL so users get the update.
  */
-const VERSION = 'smartboard-v34';
+const VERSION = 'smartboard-v38';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -62,6 +62,21 @@ async function staleWhileRevalidate(request, cacheName, matchOptions) {
   return cached || (await network) || Response.error();
 }
 
+// Network first for our own files (so updates appear at once), cache only when offline / slow.
+async function networkFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const res = await Promise.race([
+      fetch(request),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 4000)),
+    ]);
+    if (res && res.ok) cache.put(request, res.clone());
+    return res;
+  } catch (e) {
+    return (await cache.match(request)) || (await fetch(request).catch(() => Response.error()));
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -72,24 +87,32 @@ self.addEventListener('fetch', (event) => {
   // Always check the network for the service worker file itself.
   if (url.pathname === '/sw.js' || url.pathname.startsWith('/api/')) return;
 
-  // Page navigations (including /?room=CODE): open the cached app shell instantly.
+  // Page navigations: ask the network first (so a new deploy shows up immediately),
+  // fall back to the cached shell if offline or very slow (> 3 s).
   if (req.mode === 'navigate') {
     event.respondWith(
       (async () => {
         const cache = await caches.open(SHELL_CACHE);
-        const cached = (await cache.match('/index.html')) || (await cache.match('/'));
-        const network = fetch(req)
-          .then((res) => { if (res && res.ok) cache.put('/index.html', res.clone()); return res; })
-          .catch(() => null);
-        return cached || (await network) || Response.error();
+        const fromCache = async () => (await cache.match('/index.html')) || (await cache.match('/'));
+        try {
+          const res = await Promise.race([
+            fetch(req),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3000)),
+          ]);
+          if (res && res.ok) cache.put('/index.html', res.clone());
+          return res;
+        } catch (e) {
+          return (await fromCache()) || (await fetch(req).catch(() => Response.error()));
+        }
       })()
     );
     return;
   }
 
   if (url.origin === self.location.origin) {
-    event.respondWith(staleWhileRevalidate(req, SHELL_CACHE));
+    event.respondWith(networkFirst(req, SHELL_CACHE));
   } else if (CDN_HOSTS.includes(url.hostname)) {
     event.respondWith(staleWhileRevalidate(req, RUNTIME_CACHE));
   }
 });
+
