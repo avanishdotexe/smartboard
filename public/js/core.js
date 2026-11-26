@@ -447,6 +447,7 @@
 
         // ----- video class: join / leave / signalling relay / mute everyone -----
         case 'rtc:join': {
+          if (c.role !== 'teacher' && !callLive(r)) return ack({ ok: false, err: 'teacher-first' });
           c.call = true;
           const peers = inCall(r).filter((id) => id !== cid).map((id) => ({ id, role: clients.get(id).role, name: clients.get(id).name }));
           toRoom(r, 'rtc:joined', { id: cid, role: c.role, name: c.name }, cid);

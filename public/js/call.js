@@ -15,11 +15,11 @@
     hangup: '<path d="M3 14.5c5-4.5 13-4.5 18 0l-1.6 2.6a1.4 1.4 0 0 1-1.8.6l-2.6-1.2a1.4 1.4 0 0 1-.8-1.3v-1.5a11 11 0 0 0-5.6 0v1.5a1.4 1.4 0 0 1-.8 1.3l-2.6 1.2a1.4 1.4 0 0 1-1.8-.6Z"/>',
   });
 
-  const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+  let ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const ic = (el0, name) => { el0.innerHTML = SB.svgOf(name); };
 
-  const st = { on: false, me: null, known: new Map(), peers: new Map(), local: { audio: null, video: null, screen: null }, mic: false, cam: false, scr: false, live: false, count: 0, wasLive: false, mine: null };
+  const st = { on: false, me: null, known: new Map(), peers: new Map(), local: { audio: null, video: null, screen: null }, mic: false, cam: false, scr: false, voice: false, live: false, count: 0, wasLive: false, mine: null };
   const isTeacher = () => S.role === 'teacher';
   const sig = (to, data) => emit('rtc:sig', { to, data });
   const curVideo = () => st.local.screen || st.local.video || null;
@@ -194,17 +194,22 @@
   }, 280);
 
   // ---------- join / leave ----------
-  function joinCall() {
-    if (st.on) { showPanel(true); return; }
+  function joinCall(opts) {
+    const voice = !!(opts && opts.voice);
+    if (st.on) { if (!voice) { st.voice = false; showPanel(true); } return; }
+    fetch('/api/ice').then((r) => r.json()).then((j) => { if (j && j.iceServers) ICE = { iceServers: j.iceServers }; }).catch(() => {});
     emit('rtc:join', {}, async (res) => {
+      if (res && res.err === 'teacher-first') { toast('Only the teacher can start the class. Please wait.'); return; }
       if (!res || !res.ok) { toast('Could not join the video class. Try again.'); return; }
       st.on = true; st.me = res.me; st.known = new Map(); (res.peers || []).forEach((p) => st.known.set(p.id, p));
       $('#callTiles').innerHTML = '';
       st.mine = makeTile('You', true); renderLocal();
-      showPanel(true);
+      st.voice = voice;
+      if (!voice) showPanel(true);
       (res.peers || []).forEach(addPeer);
       updateUI();
-      if (isTeacher()) { await getMedia(true, true); applyAll(); }
+      if (isTeacher()) { await getMedia(true, !voice); applyAll(); if (voice && st.mic) toast('🎙 You are live. Students who tap "Listen" can hear you.', { ms: 3200 }); }
+      else if (voice) toast('🎧 Listening to the teacher. Turn your volume up.', { ms: 2800 });
       else toast('You joined the video class. Tap the mic or camera to speak or show yourself.', { ms: 3200 });
     });
   }
@@ -213,7 +218,7 @@
     emit('rtc:leave', {});
     [...st.peers.keys()].forEach(removePeer);
     ['audio', 'video', 'screen'].forEach((k) => { if (st.local[k]) st.local[k].stop(); st.local[k] = null; });
-    st.mic = st.cam = st.scr = false; st.on = false; st.me = null; st.mine = null; st.known = new Map();
+    st.mic = st.cam = st.scr = false; st.voice = false; st.on = false; st.me = null; st.mine = null; st.known = new Map();
     $('#callTiles').innerHTML = ''; showPanel(false); updateUI();
   }
 
@@ -223,6 +228,7 @@
     const btn = $('#callBtn'); if (!btn) return;
     btn.classList.toggle('on', st.on); btn.classList.toggle('live', st.live && !st.on);
     $('#callDot').classList.toggle('hidden', !(st.live && !st.on));
+    voiceUI();
     btn.title = st.on ? 'Video class (you are in)' : st.live ? 'Join the video class (live now)' : 'Start / join video class';
     if (!st.on) return;
     const n = st.peers.size + 1;
@@ -241,10 +247,37 @@
     $('#callHint').textContent = hint;
   }
 
+  // ---------- voice only: a separate mic button for the teacher, a "Listen" pill for students ----------
+  let banner = null;
+  function voiceUI() {
+    const vb = document.getElementById('voiceBtn');
+    if (vb) { const talking = st.on && st.mic && isTeacher(); vb.classList.toggle('live', talking); vb.title = talking ? 'You are live. Tap to stop speaking' : 'Speak to the class (voice only)'; }
+    if (isTeacher()) { if (banner) banner.classList.add('hidden'); return; }
+    if (!banner) {
+      banner = document.createElement('button'); banner.id = 'voiceBanner'; banner.className = 'voice-banner hidden';
+      banner.onclick = () => { if (st.on && st.voice) leaveCall(); else if (!st.on) joinCall({ voice: true }); else showPanel(true); };
+      document.body.appendChild(banner);
+    }
+    const listening = st.on && st.voice;
+    banner.classList.toggle('hidden', !(st.live || st.on) || (st.on && !st.voice));
+    banner.classList.toggle('on', listening);
+    if (listening && !banner._t && !banner.classList.contains('mini')) banner._t = setTimeout(() => { banner._t = null; if (st.on && st.voice) { banner.classList.add('mini'); banner.innerHTML = '🎧'; banner.title = 'Listening. Tap to stop'; } }, 3000);
+    if (!listening) { clearTimeout(banner._t); banner._t = null; banner.classList.remove('mini'); }
+    if (banner.classList.contains('mini')) return;
+    banner.innerHTML = listening ? '🎧 Listening. Tap to stop' : '🎙 Teacher is live. <b>Tap to listen</b>';
+  }
+  function teacherVoice() {
+    if (!st.on) { joinCall({ voice: true }); return; }
+    if (st.mic) { setMic(false); if (st.voice) leaveCall(); else toast('Mic off', { ms: 1200 }); }
+    else setMic(true);
+  }
+
   function wire() {
+    { const vb = document.getElementById('voiceBtn'); if (vb) vb.onclick = () => { if (window.SB_DEMO) { toast('Voice needs microphone access, which this preview page cannot use. Run the real app to try it.', { ms: 4500 }); return; } teacherVoice(); }; }
     const demo = () => !!window.SB_DEMO;
     $('#callBtn').onclick = () => {
       if (demo()) { toast('Video class needs camera and microphone access, which this preview page cannot use. Run the downloaded SmartBoard app to try it.', { ms: 5200 }); return; }
+      if (!st.on && !isTeacher() && !st.live) { toast('Only the teacher can start the video class. You can join once it is live.', { ms: 3200 }); return; }
       if (!st.on) joinCall(); else showPanel($('#callPanel').classList.contains('hidden'));
     };
     $('#cMic').onclick = () => setMic(!st.mic);
@@ -282,7 +315,8 @@
   });
   hook('net:call:state', ({ live, count }) => {
     st.live = !!live; st.count = count || 0;
-    if (st.live && !st.wasLive && !st.on && !isTeacher()) toast('📹 The teacher started a video class. Tap the camera button at the top to join.', { ms: 5000 });
+    if (st.live && !st.wasLive && !st.on && !isTeacher()) toast('🎙 The teacher is live. Tap "Tap to listen" (or the camera button for video).', { ms: 5000 });
+    if (!st.live && st.on && !isTeacher()) { toast('The teacher ended the live class.', { ms: 2200 }); leaveCall(); }
     st.wasLive = st.live; updateUI();
   });
   hook('leave', () => { leaveCall(); st.live = false; st.wasLive = false; updateUI(); });
