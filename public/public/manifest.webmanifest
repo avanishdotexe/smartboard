@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "SmartBoard - Live Digital Teaching Board",
+  "short_name": "SmartBoard",
+  "description": "A real-time digital whiteboard for teachers and students. Draw, share and teach live.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b0f17",
+  "theme_color": "#0b0f17",
+  "lang": "en",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/wide.png", "sizes": "1366x768", "type": "image/png", "form_factor": "wide", "label": "Teacher board with drawing tools" },
+    { "src": "/screenshots/narrow.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow", "label": "SmartBoard on a phone" }
+  ]
+}

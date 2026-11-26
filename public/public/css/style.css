@@ -927,3 +927,14 @@ html, body { overflow-x: hidden; }
 }
 .ver-tag { position: fixed; left: 0; right: 0; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .06em; opacity: .45; pointer-events: none; }
 #landing:not(.active) .ver-tag { display: none; }
+
+/* voice-only: teacher mic button + student "Tap to listen" pill */
+.topbar #voiceBtn { --c: #ef4444; }
+.topbar #voiceBtn.live { background: linear-gradient(145deg, #fb7185, #dc2626); animation: voicePulse 1.2s ease-in-out infinite; }
+@keyframes voicePulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.65); } 50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } }
+.voice-banner { position: fixed; left: 50%; top: calc(86px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 45; border: 0; border-radius: 99px; padding: 11px 20px; font: 600 15px/1 inherit; font-family: inherit; color: #fff; background: linear-gradient(135deg, #ef4444, #f97316); box-shadow: 0 10px 28px rgba(239,68,68,.45); cursor: pointer; white-space: nowrap; animation: voicePulse 1.4s ease-in-out infinite; }
+.voice-banner.on { background: linear-gradient(135deg, #10b981, #059669); animation: none; box-shadow: 0 10px 28px rgba(16,185,129,.4); }
+.voice-banner.hidden { display: none; }
+@media (orientation: landscape) and (max-height: 520px) { .voice-banner { top: 10px; } }
+
+.voice-banner.mini{left:auto;right:14px;transform:none;width:44px;height:44px;padding:0;display:grid;place-items:center;border-radius:50%;font-size:20px;opacity:.85}
