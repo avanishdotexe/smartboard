@@ -3,7 +3,7 @@
  * - Live drawing always needs the internet: socket traffic is never intercepted or cached.
  * - Bump VERSION when you change any file in SHELL so users get the update.
  */
-const VERSION = 'smartboard-v45';
+const VERSION = 'smartboard-v47';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 

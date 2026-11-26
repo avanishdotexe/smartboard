@@ -180,3 +180,10 @@ smartboard/
 ### 2.17 TURN server and Render "waking up" page
 - `/api/ice` gives the video/voice ICE servers (STUN + TURN). Default TURN is the free public Open Relay. To use your own, set `TURN_URLS`, `TURN_USER`, `TURN_PASS` on Render.
 - Every response has an `X-SB` header. The service worker ignores any response without it (Render's "waking up" page) and shows the saved app instead.
+
+### 2.18 Automatic listening
+Students hear the teacher automatically when the teacher taps the red mic (no "Tap to listen"). Students get one round 🔊/🔕 button to mute the teacher's voice on their own phone.
+
+### 2.19 Draggable mute button
+The student's 🔊/🔕 button can be dragged anywhere on screen; the place is remembered on that phone.
+The mute button hides itself after 3 seconds and comes back when the student touches the screen.

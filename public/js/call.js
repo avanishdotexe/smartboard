@@ -261,6 +261,26 @@
   }
 
   // ---------- voice only: a separate mic button for the teacher, a "Listen" pill for students ----------
+  // the mute button can be dragged anywhere; its place is remembered
+  function makeDraggable(b) {
+    let drag = null, moved = false;
+    const clamp = () => { const r = b.getBoundingClientRect(); const x = Math.min(Math.max(4, r.left), innerWidth - r.width - 4), y = Math.min(Math.max(4, r.top), innerHeight - r.height - 4); b.style.left = x + 'px'; b.style.top = y + 'px'; };
+    const put = (x, y) => { b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.right = 'auto'; b.style.bottom = 'auto'; };
+    try { const sp = JSON.parse(localStorage.getItem('sb_voice_pos') || 'null'); if (sp) { put(sp.x * innerWidth, sp.y * innerHeight); } } catch { /* ignore */ }
+    b.style.touchAction = 'none';
+    b.addEventListener('pointerdown', (ev) => { const r = b.getBoundingClientRect(); drag = { dx: ev.clientX - r.left, dy: ev.clientY - r.top, sx: ev.clientX, sy: ev.clientY }; moved = false; try { b.setPointerCapture(ev.pointerId); } catch { /* ignore */ } });
+    b.addEventListener('pointermove', (ev) => {
+      if (!drag) return;
+      if (!moved && Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) < 8) return;
+      moved = true; put(ev.clientX - drag.dx, ev.clientY - drag.dy); clamp();
+    });
+    const end = () => {
+      if (drag && moved) { try { const r = b.getBoundingClientRect(); localStorage.setItem('sb_voice_pos', JSON.stringify({ x: r.left / innerWidth, y: r.top / innerHeight })); } catch { /* ignore */ } b._dragged = Date.now(); }
+      drag = null;
+    };
+    b.addEventListener('pointerup', end); b.addEventListener('pointercancel', end);
+    window.addEventListener('resize', () => { if (b.style.left) clamp(); });
+  }
   let banner = null;
   function voiceUI() {
     const vb = document.getElementById('voiceBtn');
@@ -268,10 +288,15 @@
     if (isTeacher()) { if (banner) banner.classList.add('hidden'); return; }
     if (!banner) {
       banner = document.createElement('button'); banner.id = 'voiceBanner'; banner.className = 'voice-banner hidden';
-      banner.onclick = () => { st.muted = !st.muted; st.peers.forEach((e) => { if (e.au) e.au.muted = st.muted; }); voiceUI(); toast(st.muted ? '🔕 Teacher voice muted' : '🔊 Teacher voice on', { ms: 1400 }); };
+      banner.onclick = () => { if (banner._dragged && Date.now() - banner._dragged < 350) return; st.muted = !st.muted; st.peers.forEach((e) => { if (e.au) e.au.muted = st.muted; }); voiceUI(); toast(st.muted ? '🔕 Teacher voice muted' : '🔊 Teacher voice on', { ms: 1400 }); };
       document.body.appendChild(banner);
+      makeDraggable(banner);
+      // hides itself after 3 seconds; any touch on the screen brings it back
+      const wake = () => { banner.classList.remove('faded'); clearTimeout(banner._h); banner._h = setTimeout(() => banner.classList.add('faded'), 3000); };
+      banner._wake = wake; wake();
+      ['pointerdown', 'touchstart', 'mousemove', 'keydown'].forEach((n) => document.addEventListener(n, wake, { passive: true, capture: true }));
     }
-    banner.classList.toggle('hidden', !(st.on && st.voice));
+    { const wasHidden = banner.classList.contains('hidden'); banner.classList.toggle('hidden', !(st.on && st.voice)); if (wasHidden && st.on && st.voice && banner._wake) banner._wake(); }
     banner.classList.toggle('on', !st.muted); banner.classList.toggle('muted', st.muted);
     banner.textContent = st.muted ? '🔕' : '🔊';
     banner.title = st.muted ? 'Teacher voice is muted. Tap to unmute' : 'Mute teacher voice';

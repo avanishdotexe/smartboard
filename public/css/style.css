@@ -942,3 +942,6 @@ html, body { overflow-x: hidden; }
 .voice-banner,.voice-banner.mini{left:auto;right:14px;transform:none;width:46px;height:46px;padding:0;display:grid;place-items:center;border-radius:50%;font-size:21px;animation:none}
 .voice-banner.muted{background:linear-gradient(135deg,#64748b,#475569);box-shadow:0 8px 22px rgba(71,85,105,.45)}
 .voice-banner.hidden{display:none}
+
+.voice-banner{transition:opacity .35s ease}
+.voice-banner.faded{opacity:0;pointer-events:none}
