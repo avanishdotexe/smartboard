@@ -27,6 +27,16 @@ const BUILD_ID = (() => {
   try { walk(path.join(__dirname, 'public')); } catch (e) { h.update(String(Date.now())); }
   return h.digest('hex').slice(0, 10);
 })();
+// marks responses that really come from SmartBoard (Render's "waking up" page does not have it)
+app.use((_req, res, next) => { res.setHeader('X-SB', '1'); next(); });
+// ICE servers for video/voice. Set TURN_URLS (comma separated), TURN_USER, TURN_PASS on Render to use your own TURN server.
+app.get('/api/ice', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const ice = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  const urls = (process.env.TURN_URLS || 'turn:staticauth.openrelay.metered.ca:80,turn:staticauth.openrelay.metered.ca:443,turns:staticauth.openrelay.metered.ca:443?transport=tcp').split(',').map((x) => x.trim()).filter(Boolean);
+  ice.push({ urls, username: process.env.TURN_USER || 'openrelayproject', credential: process.env.TURN_PASS || 'openrelayproject' });
+  res.json({ iceServers: ice });
+});
 app.get('/api/version', (_req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ v: BUILD_ID }); });
 
 app.use(express.static(path.join(__dirname, 'public'), {

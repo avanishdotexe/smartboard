@@ -167,3 +167,16 @@ smartboard/
 ### 2.14 Chat photos & teacher name
 - Teacher and students can send photos in chat (auto-shrunk to ≤ ~400 KB, tap to open full screen). Only the newest ~3 MB of photos are kept per room.
 - Teacher can set a display name (landing page or "Shown as" box in chat). Students see it with an orange **TEACHER** badge and a highlighted bubble, so it never looks like a student.
+
+### 2.15 Auto-update (no cache clearing needed)
+- The server exposes `/api/version` (a hash of all files in `public/`, new on every deploy). The page checks it when opened, when you come back to the tab and every 3 minutes.
+- On the landing page a new version reloads by itself. Inside a running class a green "New version ready – Update" button appears, so a lesson is never interrupted.
+- All HTML/JS/CSS are sent with `Cache-Control: no-cache`, and the service worker asks the network first, so a new deploy reaches users on the next open.
+
+### 2.16 Voice-only mic and teacher-only class start
+- Teacher has a separate red mic button (voice only, no camera). Students see a "Tap to listen" pill while the teacher is live.
+- Only the teacher can start the video class or voice. Students can join only after the teacher is live (also enforced on the server). When the teacher stops, students are removed automatically.
+
+### 2.17 TURN server and Render "waking up" page
+- `/api/ice` gives the video/voice ICE servers (STUN + TURN). Default TURN is the free public Open Relay. To use your own, set `TURN_URLS`, `TURN_USER`, `TURN_PASS` on Render.
+- Every response has an `X-SB` header. The service worker ignores any response without it (Render's "waking up" page) and shows the saved app instead.
