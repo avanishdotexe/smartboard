@@ -82,3 +82,37 @@
   const start = () => { check(); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); setInterval(check, 3 * 60 * 1000); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+
+/* Server wake-up notice: Render's free plan sleeps when idle and needs up to a minute to wake.
+ * If the server does not answer quickly, show a friendly message until it is ready. */
+(function () {
+  if (window.SB_DEMO || location.protocol === 'file:') return;
+  var bar = null, t0 = Date.now(), done = false, shown = false;
+  function css() {
+    if (document.getElementById('wakeCss')) return;
+    var st = document.createElement('style'); st.id = 'wakeCss';
+    st.textContent = '.wake-bar{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:9999;max-width:92vw;padding:11px 18px;border-radius:99px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#1f1300;font:700 14px/1.3 Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(249,115,22,.45);display:flex;gap:10px;align-items:center;text-align:center}.wake-bar i{width:14px;height:14px;border-radius:50%;border:2.5px solid rgba(31,19,0,.3);border-top-color:#1f1300;animation:wakeSpin .8s linear infinite;flex:none}.wake-bar.ok{background:linear-gradient(135deg,#10b981,#059669);color:#fff}@keyframes wakeSpin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(st);
+  }
+  function show() {
+    if (done) return; css();
+    if (!bar) { bar = document.createElement('div'); bar.className = 'wake-bar'; bar.innerHTML = '<i></i><span></span>'; document.body.appendChild(bar); shown = true; }
+    bar.lastChild.textContent = '⏳ Waking up the server, please wait…';
+  }
+  function ready() {
+    done = true;
+    if (bar && shown) { bar.className = 'wake-bar ok'; bar.innerHTML = '<span>✅ Server is ready</span>'; setTimeout(function () { if (bar) bar.remove(); }, 1600); }
+  }
+  function ping() {
+    if (done) return;
+    var ctl = window.AbortController ? new AbortController() : null;
+    var to = setTimeout(function () { if (ctl) ctl.abort(); }, 6000);
+    fetch('/api/version?_=' + Date.now(), { cache: 'no-store', signal: ctl && ctl.signal })
+      .then(function (r) { clearTimeout(to); if (r.ok && r.headers.get('X-SB')) ready(); else throw new Error('waking'); })
+      .catch(function () { clearTimeout(to); show(); setTimeout(ping, 2500); });
+  }
+  setTimeout(function () { if (!done) show(); }, 1200);
+  var tick = setInterval(function () { if (done) clearInterval(tick); else if (bar) show(); }, 1000);
+  function start() { ping(); }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();

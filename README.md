@@ -187,3 +187,6 @@ Students hear the teacher automatically when the teacher taps the red mic (no "T
 ### 2.19 Draggable mute button
 The student's 🔊/🔕 button can be dragged anywhere on screen; the place is remembered on that phone.
 The mute button hides itself after 3 seconds and comes back when the student touches the screen.
+
+### 2.20 "Waking up the server" notice
+If the server does not answer within about a second (Render free plan was asleep), a banner says "Waking up the server, please wait…" and changes to "Server is ready" when it answers (`install.js`).
