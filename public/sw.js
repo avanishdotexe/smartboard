@@ -3,7 +3,7 @@
  * - Live drawing always needs the internet: socket traffic is never intercepted or cached.
  * - Bump VERSION when you change any file in SHELL so users get the update.
  */
-const VERSION = 'smartboard-v39';
+const VERSION = 'smartboard-v43';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -70,8 +70,8 @@ async function networkFirst(request, cacheName) {
       fetch(request),
       new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 4000)),
     ]);
-    if (res && res.ok) cache.put(request, res.clone());
-    return res;
+    if (res && res.ok && res.headers.get('X-SB')) { cache.put(request, res.clone()); return res; }
+    throw new Error('not-ours');
   } catch (e) {
     return (await cache.match(request)) || (await fetch(request).catch(() => Response.error()));
   }
@@ -99,8 +99,8 @@ self.addEventListener('fetch', (event) => {
             fetch(req),
             new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3000)),
           ]);
-          if (res && res.ok) cache.put('/index.html', res.clone());
-          return res;
+          if (res && res.ok && res.headers.get('X-SB')) { cache.put('/index.html', res.clone()); return res; }
+          throw new Error('not-ours'); // e.g. Render's "waking up" page: show the saved app instead
         } catch (e) {
           return (await fromCache()) || (await fetch(req).catch(() => Response.error()));
         }
