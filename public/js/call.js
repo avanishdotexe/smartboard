@@ -19,7 +19,7 @@
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
   const ic = (el0, name) => { el0.innerHTML = SB.svgOf(name); };
 
-  const st = { on: false, me: null, known: new Map(), peers: new Map(), local: { audio: null, video: null, screen: null }, mic: false, cam: false, scr: false, voice: false, live: false, count: 0, wasLive: false, mine: null };
+  const st = { on: false, me: null, known: new Map(), peers: new Map(), local: { audio: null, video: null, screen: null }, mic: false, cam: false, scr: false, voice: false, muted: false, live: false, count: 0, wasLive: false, mine: null };
   const isTeacher = () => S.role === 'teacher';
   const sig = (to, data) => emit('rtc:sig', { to, data });
   const curVideo = () => st.local.screen || st.local.video || null;
@@ -128,7 +128,17 @@
     pc.onicecandidate = (ev) => { if (ev.candidate) sig(e.id, { ice: ev.candidate }); };
     pc.ontrack = (ev) => {
       e.stream.addTrack(ev.track); e.tile.v.srcObject = e.stream; e.tile.v.play().catch(() => {});
-      if (ev.track.kind === 'audio') watchRemote(e);
+      if (ev.track.kind === 'audio') {
+        watchRemote(e);
+        // sound goes through its own <audio> element (not inside the hidden video panel), so it always plays
+        e.tile.v.muted = true;
+        if (!e.au) { e.au = document.createElement('audio'); e.au.autoplay = true; e.au.setAttribute('playsinline', ''); e.au.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0'; document.body.appendChild(e.au); }
+        e.au.srcObject = new MediaStream([ev.track]); e.au.volume = 1; e.au.muted = st.muted;
+        const go = () => e.au.play().then(() => { if (e.unlock) { document.removeEventListener('click', e.unlock, true); document.removeEventListener('touchend', e.unlock, true); e.unlock = null; } }).catch(() => {
+          if (!e.unlock) { e.unlock = () => go(); document.addEventListener('click', e.unlock, true); document.addEventListener('touchend', e.unlock, true); toast('🔈 Tap anywhere on the screen to turn the sound on.', { ms: 3500 }); }
+        });
+        go();
+      }
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') sendState(e.id);
@@ -169,6 +179,8 @@
     const e = st.peers.get(id); if (!e) return;
     try { e.pc.close(); } catch { /* closed */ }
     if (e.src) { try { e.src.disconnect(); } catch { /* ignore */ } }
+    if (e.au) { try { e.au.srcObject = null; e.au.remove(); } catch { /* ignore */ } }
+    if (e.unlock) { document.removeEventListener('click', e.unlock, true); document.removeEventListener('touchend', e.unlock, true); }
     e.tile.t.remove(); st.peers.delete(id); updateUI();
   }
 
@@ -197,6 +209,7 @@
   function joinCall(opts) {
     const voice = !!(opts && opts.voice);
     if (st.on) { if (!voice) { st.voice = false; showPanel(true); } return; }
+    if (st.joining) return; st.joining = true; setTimeout(() => { st.joining = false; }, 4000);
     fetch('/api/ice').then((r) => r.json()).then((j) => { if (j && j.iceServers) ICE = { iceServers: j.iceServers }; }).catch(() => {});
     emit('rtc:join', {}, async (res) => {
       if (res && res.err === 'teacher-first') { toast('Only the teacher can start the class. Please wait.'); return; }
@@ -255,17 +268,15 @@
     if (isTeacher()) { if (banner) banner.classList.add('hidden'); return; }
     if (!banner) {
       banner = document.createElement('button'); banner.id = 'voiceBanner'; banner.className = 'voice-banner hidden';
-      banner.onclick = () => { if (st.on && st.voice) leaveCall(); else if (!st.on) joinCall({ voice: true }); else showPanel(true); };
+      banner.onclick = () => { st.muted = !st.muted; st.peers.forEach((e) => { if (e.au) e.au.muted = st.muted; }); voiceUI(); toast(st.muted ? '🔕 Teacher voice muted' : '🔊 Teacher voice on', { ms: 1400 }); };
       document.body.appendChild(banner);
     }
-    const listening = st.on && st.voice;
-    banner.classList.toggle('hidden', !(st.live || st.on) || (st.on && !st.voice));
-    banner.classList.toggle('on', listening);
-    if (listening && !banner._t && !banner.classList.contains('mini')) banner._t = setTimeout(() => { banner._t = null; if (st.on && st.voice) { banner.classList.add('mini'); banner.innerHTML = '🎧'; banner.title = 'Listening. Tap to stop'; } }, 3000);
-    if (!listening) { clearTimeout(banner._t); banner._t = null; banner.classList.remove('mini'); }
-    if (banner.classList.contains('mini')) return;
-    banner.innerHTML = listening ? '🎧 Listening. Tap to stop' : '🎙 Teacher is live. <b>Tap to listen</b>';
+    banner.classList.toggle('hidden', !(st.on && st.voice));
+    banner.classList.toggle('on', !st.muted); banner.classList.toggle('muted', st.muted);
+    banner.textContent = st.muted ? '🔕' : '🔊';
+    banner.title = st.muted ? 'Teacher voice is muted. Tap to unmute' : 'Mute teacher voice';
   }
+
   function teacherVoice() {
     if (!st.on) { joinCall({ voice: true }); return; }
     if (st.mic) { setMic(false); if (st.voice) leaveCall(); else toast('Mic off', { ms: 1200 }); }
@@ -315,7 +326,7 @@
   });
   hook('net:call:state', ({ live, count }) => {
     st.live = !!live; st.count = count || 0;
-    if (st.live && !st.wasLive && !st.on && !isTeacher()) toast('🎙 The teacher is live. Tap "Tap to listen" (or the camera button for video).', { ms: 5000 });
+    if (st.live && !st.on && !isTeacher() && !window.SB_DEMO) joinCall({ voice: true }); // students hear the teacher automatically
     if (!st.live && st.on && !isTeacher()) { toast('The teacher ended the live class.', { ms: 2200 }); leaveCall(); }
     st.wasLive = st.live; updateUI();
   });
