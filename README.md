@@ -190,3 +190,10 @@ The mute button hides itself after 3 seconds and comes back when the student tou
 
 ### 2.20 "Waking up the server" notice
 If the server does not answer within about a second (Render free plan was asleep), a banner says "Waking up the server, please wait…" and changes to "Server is ready" when it answers (`install.js`).
+
+### 2.21 Better PDF upload (`pdfkit.js`)
+- PDF button opens a sheet: drop zone, first-page preview, page count, fill mode (Full screen / Stretch / Fill / Small), quality (Standard / HD / Ultra HD), page range, progress bar. A PDF can also be dropped straight onto the board.
+- Pages are rendered up to 4x the board size with adaptive JPEG quality, so text stays sharp.
+- A PDF bar (teacher) appears on PDF pages: back/next, page thumbnails, Fit/Stretch/Fill, zoom -/+, apply to all pages, full screen present mode.
+- The PDF bar hides itself after 3 seconds and returns on touch or mouse move.
+- The PDF bar is opened by a small draggable 📄 dot (position remembered); it hides again after 5 seconds.
