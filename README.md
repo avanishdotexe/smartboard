@@ -201,3 +201,9 @@ If the server does not answer within about a second (Render free plan was asleep
 ### 2.22 Reconnect without losing the drawing
 - After a dropped connection the teacher's local strokes, edits and new pages are sent to the server again (nothing disappears; "Restored n items" toast).
 - "Connection lost" shows only if the network is down for more than 2.5 seconds. Server ping timeout is 60 s and the server logs (does not crash on) unexpected errors.
+
+### 2.23 Waking-up screen with progress bar
+When the Render free server is asleep, `install.js` shows a centered card: bouncing logo, percentage + progress bar (fills while waiting, jumps to 100% when the server answers), changing status lines, a drawing doodle and rotating tips.
+
+### Version numbering
+The landing page shows "App version vX.Y" (`index.html`, `#verTag`) and `public/sw.js` has the same number in `VERSION`. Raise both on every update: v1.6 → v1.7 → v1.8 …

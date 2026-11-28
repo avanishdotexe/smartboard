@@ -46,9 +46,9 @@
     },
   };
 
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); ev = e; const go = () => setTimeout(() => build(false), 600); if (document.body) go(); else document.addEventListener('DOMContentLoaded', go); });
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); ev = e; const go = () => setTimeout(function w() { if (window.__sbWaking) return setTimeout(w, 800); build(false); }, 600); if (document.body) go(); else document.addEventListener('DOMContentLoaded', go); });
   window.addEventListener('appinstalled', () => { set(KEY, String(Date.now() + 3650 * 86400000)); if (card) { card.remove(); back && back.remove(); card = back = null; } });
-  if (ios && !standalone()) { const go = () => setTimeout(() => build(true), 1200); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
+  if (ios && !standalone()) { const go = () => setTimeout(function w() { if (window.__sbWaking) return setTimeout(w, 800); build(true); }, 1200); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 })();
 
 /* when a new version of the app takes over, reload once so the user sees it right away */
@@ -83,25 +83,65 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 
-/* Server wake-up notice: Render's free plan sleeps when idle and needs up to a minute to wake.
- * If the server does not answer quickly, show a friendly message until it is ready. */
+/* Server wake-up screen: Render's free plan sleeps when idle and needs a while to wake.
+ * If the server does not answer quickly, show a friendly loading card with a progress bar until it is ready. */
 (function () {
   if (window.SB_DEMO || location.protocol === 'file:') return;
-  var bar = null, t0 = Date.now(), done = false, shown = false;
+  window.__sbWaking = true; // the install popup waits until the server is ready
+  var card = null, t0 = Date.now(), done = false, shown = false, shownAt = 0, pct = 0, raf = 0, tipT = 0, stepT = 0;
+  var STEPS = ['Waking up the server', 'Warming up the classroom', 'Sharpening the pens', 'Almost ready'];
+  var TIPS = ['💡 Students join with a QR code. No install, no login.', '💡 Circle your work with the lasso, then move it anywhere.', '💡 Draw a rough circle and it turns into a perfect one.', '💡 Add a PDF and use Full screen for the whole class.', '💡 One-tap 👍 / 👎 polls show who is stuck.', '💡 Install the app from the menu for a faster start.'];
   function css() {
     if (document.getElementById('wakeCss')) return;
     var st = document.createElement('style'); st.id = 'wakeCss';
-    st.textContent = '.wake-bar{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:9999;max-width:92vw;padding:11px 18px;border-radius:99px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#1f1300;font:700 14px/1.3 Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(249,115,22,.45);display:flex;gap:10px;align-items:center;text-align:center}.wake-bar i{width:14px;height:14px;border-radius:50%;border:2.5px solid rgba(31,19,0,.3);border-top-color:#1f1300;animation:wakeSpin .8s linear infinite;flex:none}.wake-bar.ok{background:linear-gradient(135deg,#10b981,#059669);color:#fff}@keyframes wakeSpin{to{transform:rotate(360deg)}}';
+    st.textContent = '.wk-back{position:fixed;left:0;right:0;top:calc(10px + env(safe-area-inset-top,0px));z-index:9999;display:flex;justify-content:center;padding:0 12px;pointer-events:none;animation:wkIn .35s ease both}' +
+      '.wk-back.out{animation:wkOut .5s ease both}' +
+      '.wk-card{pointer-events:auto;width:min(300px,100%);padding:9px 12px 10px;border-radius:16px;background:linear-gradient(160deg,#14212d,#0d1822);border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 34px rgba(0,0,0,.55);color:#eaf6fb;font-family:Inter,system-ui,sans-serif}' +
+      '.wk-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}' +
+      '.wk-logo{width:32px;height:32px;flex:none;border-radius:10px;background:linear-gradient(135deg,#ffb08a,#ff6b4a);display:grid;place-items:center;box-shadow:0 4px 14px rgba(255,107,74,.5);animation:wkBob 1.8s ease-in-out infinite}' +
+      '.wk-txt{flex:1;min-width:0}.wk-step{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .3s}' +
+      '.wk-tip{font-size:11px;color:#9fc3d1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .35s;margin-top:1px}' +
+      '.wk-pct{font-size:20px;font-weight:800;line-height:1;background:linear-gradient(135deg,#ffb08a,#ff6b4a);-webkit-background-clip:text;background-clip:text;color:transparent}.wk-pct small{font-size:12px;margin-left:1px}' +
+      '.wk-bar{position:relative;height:7px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}' +
+      '.wk-fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:99px;background:linear-gradient(90deg,#ff9a6b,#ff6b4a,#fbbf24);background-size:200% 100%;animation:wkFlow 1.4s linear infinite}' +
+      '.wk-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-100%);animation:wkShine 1.6s ease-in-out infinite}' +
+      '.wk-card.ok .wk-fill{background:linear-gradient(90deg,#10b981,#34d399);animation:none}.wk-card.ok .wk-pct{background:linear-gradient(135deg,#6ee7b7,#10b981);-webkit-background-clip:text;background-clip:text}' +
+      '@keyframes wkIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1}}@keyframes wkOut{to{opacity:0;transform:translateY(-10px)}}@keyframes wkBob{50%{transform:translateY(-2px) rotate(-4deg)}}' +
+      '@keyframes wkFlow{to{background-position:-200% 0}}@keyframes wkShine{to{transform:translateX(100%)}}' +
+      '@media (prefers-reduced-motion:reduce){.wk-logo,.wk-fill,.wk-fill::after{animation:none}}';
     document.head.appendChild(st);
   }
   function show() {
-    if (done) return; css();
-    if (!bar) { bar = document.createElement('div'); bar.className = 'wake-bar'; bar.innerHTML = '<i></i><span></span>'; document.body.appendChild(bar); shown = true; }
-    bar.lastChild.textContent = '⏳ Waking up the server, please wait…';
+    if (done || shown) return; css(); shown = true; shownAt = Date.now();
+    var b = document.createElement('div'); b.className = 'wk-back';
+    b.innerHTML = '<div class="wk-card"><div class="wk-row"><div class="wk-logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b0f06" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 12l3-3 3 2 4-4M12 16v4M8 20h8"/></svg></div>' +
+      '<div class="wk-txt"><div class="wk-step" id="wkStep"></div></div><div class="wk-pct"><span id="wkNum">0</span><small>%</small></div></div>' +
+      '<div class="wk-bar"><div class="wk-fill" id="wkFill"></div></div></div>';
+    document.body.appendChild(b); card = b;
+    var si = 0;
+    var step = document.getElementById('wkStep');
+    function swap(el, txt) { el.style.opacity = 0; setTimeout(function () { el.textContent = txt; el.style.opacity = 1; }, 250); }
+    step.textContent = STEPS[0] + '…';
+    stepT = setInterval(function () { si = Math.min(si + 1, STEPS.length - 1); swap(step, STEPS[si] + '…'); }, 6500);
+    (function loop() {
+      if (!card) return;
+      var el = (Date.now() - shownAt) / 1000;
+      var target = done ? 100 : Math.min(94, 100 * (1 - Math.exp(-el / 16)));   // eases up, jumps to 100 when ready
+      pct += (target - pct) * (done ? 0.25 : 0.06);
+      var n = Math.min(100, Math.round(pct)), f = document.getElementById('wkFill'), nm = document.getElementById('wkNum');
+      if (f) f.style.width = pct.toFixed(1) + '%'; if (nm) nm.textContent = n;
+      raf = requestAnimationFrame(loop);
+    })();
   }
   function ready() {
-    done = true;
-    if (bar && shown) { bar.className = 'wake-bar ok'; bar.innerHTML = '<span>✅ Server is ready</span>'; setTimeout(function () { if (bar) bar.remove(); }, 1600); }
+    done = true; window.__sbWaking = false;
+    if (!shown) return;
+    var c = card && card.firstChild, step = document.getElementById('wkStep');
+    if (c) c.classList.add('ok'); if (step) step.textContent = '✅ Ready!';
+    setTimeout(function () {
+      if (!card) return; card.classList.add('out'); clearInterval(stepT);
+      setTimeout(function () { cancelAnimationFrame(raf); if (card) card.remove(); card = null; }, 520);
+    }, 900);
   }
   function ping() {
     if (done) return;
@@ -112,7 +152,6 @@
       .catch(function () { clearTimeout(to); show(); setTimeout(ping, 2500); });
   }
   setTimeout(function () { if (!done) show(); }, 1200);
-  var tick = setInterval(function () { if (done) clearInterval(tick); else if (bar) show(); }, 1000);
   function start() { ping(); }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
