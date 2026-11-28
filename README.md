@@ -197,3 +197,7 @@ If the server does not answer within about a second (Render free plan was asleep
 - A PDF bar (teacher) appears on PDF pages: back/next, page thumbnails, Fit/Stretch/Fill, zoom -/+, apply to all pages, full screen present mode.
 - The PDF bar hides itself after 3 seconds and returns on touch or mouse move.
 - The PDF bar is opened by a small draggable 📄 dot (position remembered); it hides again after 5 seconds.
+
+### 2.22 Reconnect without losing the drawing
+- After a dropped connection the teacher's local strokes, edits and new pages are sent to the server again (nothing disappears; "Restored n items" toast).
+- "Connection lost" shows only if the network is down for more than 2.5 seconds. Server ping timeout is 60 s and the server logs (does not crash on) unexpected errors.

@@ -10,9 +10,13 @@ const { createEngine } = require('./public/js/core.js');
 
 const app = express();
 app.set('trust proxy', 1);
+// one bad request must never take the whole board down
+process.on('uncaughtException', (e) => console.error('uncaughtException', e));
+process.on('unhandledRejection', (e) => console.error('unhandledRejection', e));
 const server = http.createServer(app);
 const io = new Server(server, {
   maxHttpBufferSize: 15e6, // images / PDF pages are sent as data URLs
+  pingInterval: 20000, pingTimeout: 60000, // tolerate slow phones / weak networks before saying "connection lost"
   cors: { origin: '*' },
 });
 

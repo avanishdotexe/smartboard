@@ -1051,16 +1051,37 @@
     const s = window.SB_SERVER ? io(window.SB_SERVER, { transports: ["websocket", "polling"] }) : io();
     S.socket = s;
 
+    // Anything drawn while the connection was down is sent again after reconnecting, so nothing disappears.
+    const sig = (o) => (o && o.src ? [o.x, o.y, o.w, o.h].join() : JSON.stringify(o));
+    async function resync(before) {
+      if (!before || S.role !== 'teacher') return;
+      let n = 0;
+      while (S.pages.length < before.length) {
+        const r = await new Promise((res) => s.emit('page:add', {}, res));
+        if (!r || !r.ok) break; S.pages.push([]);
+      }
+      before.forEach((loc, i) => {
+        const tgt = S.pages[i]; if (!tgt) return;
+        (loc || []).forEach((o) => {
+          const j = tgt.findIndex((x) => x.id === o.id);
+          if (j < 0) { tgt.push(o); s.emit('obj:add', { page: i, obj: clone(o) }); n++; }
+          else if (sig(tgt[j]) !== sig(o)) { tgt[j] = o; s.emit('obj:replace', { page: i, obj: clone(o) }); n++; }
+        });
+      });
+      if (n) { render(); updatePager(); toast(`Restored ${n} item${n > 1 ? 's' : ''} drawn while offline ✅`, { ms: 2600 }); }
+    }
     s.on('connect', () => {
+      clearTimeout(S.netT);
       S.ready = true; fire('server', true); toastDone('net');
       if (S.joined && S.code) {
+        const before = S.pages;
         s.emit('room:join', { code: S.code, key: keyFor(S.code), name: S.name, tname: store.get('sb_tname', '') || undefined }, (res) => {
-          if (res && res.ok) { S.role = res.role; applyState(res.state); updateUI(); toast('Reconnected ✅'); }
+          if (res && res.ok) { S.role = res.role; applyState(res.state); updateUI(); resync(before); toast('Reconnected ✅'); }
           else { toast('This room has ended.'); leaveRoom(); }
         });
       }
     });
-    s.on('disconnect', () => { S.ready = false; if (S.joined) toast('Connection lost, trying to reconnect…', { id: 'net', ms: 0 }); });
+    s.on('disconnect', () => { S.ready = false; clearTimeout(S.netT); if (S.joined) S.netT = setTimeout(() => { if (!S.ready) toast('Connection lost, trying to reconnect…', { id: 'net', ms: 0 }); }, 2500); });
 
     s.on('obj:add', ({ page, obj }) => {
       const p = S.pages[page]; if (!p) return;
